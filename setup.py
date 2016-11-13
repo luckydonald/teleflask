@@ -8,8 +8,8 @@ here = path.abspath(path.dirname(__file__))
 long_description = """A Python module that connects to the Telegram bot api, allowing to interact with Telegram users or groups."""
 
 setup(
-    name='teleflask', version="2.2.1.a5",
-    description='Easily create bots with flask. Set up webhooks. Connect to the Telegram Bot API, receive and send Telegram messages.',
+    name='teleflask', version="0.0.1",
+    description='Easily create Telegram bots with pytgbot and flask. Webhooks made easy.',
     long_description=long_description,
     # The project's main homepage.
     url='https://github.com/luckydonald/teleflask',
@@ -45,7 +45,7 @@ setup(
         'Operating System :: Unix',
     ],
     # What does your project relate to?
-    keywords='pytgbot flask telegram bot api python message send receive python secure fast answer reply image voice picture location contacts typing multi messanger inline quick reply gif image video mp4 mpeg4',
+    keywords='pytgbot flask webhook telegram bot api python message send receive python secure fast answer reply image voice picture location contacts typing multi messanger inline quick reply gif image video mp4 mpeg4',
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     packages=['teleflask', 'teleflask.server'],
