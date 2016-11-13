@@ -1,17 +1,15 @@
-# teleflask
-A python telegram bot framework based on flask and pytgbot
-
-
-## Usage
-
-```python
+# -*- coding: utf-8 -*-
 from teleflask.server import TeleflaskComplete
 from teleflask.messages import TextMessage
 
+
+__author__ = 'luckydonald'
+
 from somewhere import API_KEY  # I import it from some file which is kept private, not in git.
 # Just set API_KEY = "your-api-key".
-
-app = TeleflaskComplete(__name__, API_KEY)  # instead of writing:  app = Flask(__name__)
+app = TeleflaskComplete(__name__, API_KEY)
+# instead of writing
+# app = Flask(__name__)
 
 
 @app.route("/")
@@ -44,6 +42,3 @@ def foo(update):
         return TextMessage("Welcome!")
     # end if
 # end def
-
-```
-
