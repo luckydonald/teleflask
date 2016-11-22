@@ -114,48 +114,91 @@ class BotMessagesMixin(TeleflaskMixinBase):
 
         You can also use the handy decorator:
 
-        >>> @app.on_message("command")
+        >>> @app.on_message("text")  # all messages where  msg.text  is existent.
         >>> def foobar(update, msg):
         >>>     ...  # like above
+        Would be equal to:
+        >>> app.add_message_listener(foobar, ["text"])
     """
-    message_listeners = list()
+    message_listeners = dict()
 
-    def on_message(self, function):
+    def on_message(self, *required_keywords):
         """
         Decorator to register a listener for a message event.
+        You can give optionally give one or multiple strings. The message will need to have all this elements.
+        If you leave them out, you'll get all messages, unfiltered.
 
         Usage:
-            >>> @app.on_command("foo")
-            >>> def foo(update, text):
-            >>>     assert isinstance(update, Update)
-            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
+            >>> @app.on_message
+            >>> def foo(msg):
+            >>>     # all messages
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent any message!")
 
-            If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+            >>> @app.on_message("text")
+            >>> def foo(msg):
+            >>>     # all messages which are text messages (have the text attribute)
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent text!")
 
-        @on_command decorator. Actually is an alias to @command.
-        :param command: the string of a command
+            >>> @app.on_message("photo", "sticker")
+            >>> def foo(msg):
+            >>>     # all messages which are photos (have the photo attribute) and have a caption
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent a photo with caption!")
+
+
+        :params required_keywords: Optionally: Specify attribute the message needs to have.
         """
-        self.add_message_listener(function)
-        return function
-    # end if
+        def on_message_inner(function):
+            self.add_message_listener(function, required_keywords=required_keywords)
+        # end def
 
-    def add_message_listener(self, function):
+        if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str) # not string -> must be function
+             ):
+            # @on_message
+            return on_message_inner(function=required_keywords[0])  # not string -> must be function
+        # end if
+        # -> else: *required_keywords are the strings
+        # @on_message("text", "sticker", "whatever")
+        return on_message_inner  # let that function be called again with the function.
+    # end def
+
+    def add_message_listener(self, function, required_keywords=None):
         """
         Adds an listener for updates with messages.
+        You can filter them if you supply a list of names of attributes which all need to be present.
         No error will be raised if it is already registered. In that case a warning will be logged, but noting else will happen.
 
+        Examples:
+            >>> add_message_listener(func, required_keywords=["sticker", "caption"])
+            # will call  func(msg)  for all messages which are stickers (have the sticker attribute) and have a caption.
+
+            >>> add_message_listener(func)
+            # allows all messages.
+
         :param function:  The function to call. Will be called with the update and the message as arguments
+        :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
         :return: the function, unmodified
         """
+        if not required_keywords:
+            required_keywords = []
+        elif isinstance(required_keywords, tuple):
+            required_keywords = list(required_keywords)
+        # end if
+        assert isinstance(required_keywords, list)
+        for keyword in required_keywords:
+            assert isinstance(keyword, str)  # required_keywords must all be type str
+        # end if
         if function not in self.message_listeners:
-            self.message_listeners.append(function)
+            self.message_listeners[function] = required_keywords
         else:
             logger.warning("listener already added.")
         # end if
         return function
         # end for
     # end def add_command
-
 
     def remove_update_listener(self, func):
         """
@@ -167,7 +210,7 @@ class BotMessagesMixin(TeleflaskMixinBase):
         :return: the function, unmodified
         """
         if func in self.message_listeners:
-            self.message_listeners.remove(func)
+            del self.message_listeners[func]
         else:
             logger.warning("listener already removed.")
         # end if
@@ -188,9 +231,14 @@ class BotMessagesMixin(TeleflaskMixinBase):
         """
         assert isinstance(update, Update)
         if update.message:
-            for listener in self.message_listeners:
+            msg = update.message
+            for listener, required_fields in self.message_listeners.items():
                 try:
-                    self.process_result(update, listener(update, update.message))
+                    if not required_fields or all([hasattr(msg, f) and getattr(msg, f) for f in required_fields]):
+                        # either filters evaluates to False, (None, empty list etc) which means it should not filter
+                        # or it has filters, than we need to check if that attributes really exist.
+                        self.process_result(update, listener(update, update.message))
+                    # end if
                 except Exception:
                     logger.exception("Error executing the update listener {func}.".format(func=listener))
                 # end try
