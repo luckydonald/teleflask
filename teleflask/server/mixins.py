@@ -8,7 +8,7 @@ __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
 
-class UpdateListenersMixin(TeleflaskMixinBase):
+class UpdatesMixin(TeleflaskMixinBase):
     """
     This mixin allows you to register functions to listen on updates.
 
@@ -87,7 +87,7 @@ class UpdateListenersMixin(TeleflaskMixinBase):
 # end class
 
 
-class BotMessagesMixin(TeleflaskMixinBase):
+class MessagesMixin(TeleflaskMixinBase):
     """
     Add this to get messages.
 
