@@ -237,7 +237,7 @@ class MessagesMixin(TeleflaskMixinBase):
                     if not required_fields or all([hasattr(msg, f) and getattr(msg, f) for f in required_fields]):
                         # either filters evaluates to False, (None, empty list etc) which means it should not filter
                         # or it has filters, than we need to check if that attributes really exist.
-                        self.process_result(update, listener(update, update.message))
+                        self.process_result(update, listener(update.message))
                     # end if
                 except Exception:
                     logger.exception("Error executing the update listener {func}.".format(func=listener))

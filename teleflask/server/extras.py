@@ -20,7 +20,7 @@ class TeleflaskCommands(BotCommandsMixin, TeleflaskBase):
 # end class
 
 
-class TeleflaskMessages(BotCommandsMixin, TeleflaskBase):
+class TeleflaskMessages(MessagesMixin, TeleflaskBase):
     """
     You can use:
      `app.add_message_listener` to add functions
