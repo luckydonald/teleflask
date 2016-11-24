@@ -26,10 +26,18 @@ class UpdatesMixin(TeleflaskMixinBase):
      >>> def foobar(update):
      >>>     assert isinstance(update, pytgbot.api_types.receivable.updates.Update)
      >>>     pass
-    """
-    update_listeners = list()
 
-    def on_update(self, func):
+     Also you can filter out Updates by specifying which attributes must be non-empty, like this:
+
+     >>> @app.on_update("inline_query")
+     >>> def foobar2(update):
+     >>>     assert update.inline_query
+     >>>     # only get inline queries.
+
+    """
+    update_listeners = dict()
+
+    def on_update(self, *required_keywords):
         """
         Decorator to register a function to receive updates.
 
@@ -40,22 +48,74 @@ class UpdatesMixin(TeleflaskMixinBase):
             >>>     # do stuff with the update
             >>>     # you can use app.bot to access the bot's messages functions
         """
-        self.add_update_listener(func)
-        return func
+        def on_update_inner(function):
+            self.add_update_listener(function, required_keywords=required_keywords)
+        # end def
+        if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str) # not string -> must be function
+             ):
+            # @on_update
+            return on_update_inner(function=required_keywords[0])  # not string -> must be function
+        # end if
+        # -> else: *required_keywords are the strings
+        # @on_update("update_id", "message", "whatever")
+        return on_update_inner  # let that function be called again with the function.
     # end def
 
-    def add_update_listener(self, func):
-        if func not in self.update_listeners:
-            self.update_listeners.append(func)
+    def add_update_listener(self, function, required_keywords=None):
+        """
+        Adds an listener for updates.
+        You can filter them if you supply a list of names of attributes which all need to be present.
+        No error will be raised if it is already registered. In that case a warning will be logged,
+        but nothing else will happen, and the function is not added.
+
+        Examples:
+            >>> add_update_listener(func, required_keywords=["update_id", "message"])
+            # will call  func(msg)  for all updates which are message (have the message attribute) and have a update_id.
+
+            >>> add_message_listener(func, required_keywords=["inline_query"])
+            # calls   func(msg)     for all updates which are inline queries (have the inline_query attribute)
+
+            >>> add_message_listener(func)
+            # allows all messages.
+
+        :param function:  The function to call. Will be called with the update and the message as arguments
+        :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
+                                  Must be a list.
+        :return: the function, unmodified
+        """
+        # checking input.
+        if not required_keywords:
+            required_keywords = []
+        elif isinstance(required_keywords, tuple):
+            required_keywords = list(required_keywords)
+        # end if
+        assert isinstance(required_keywords, list)
+        for keyword in required_keywords:
+            assert isinstance(keyword, str)  # required_keywords must all be type str
+        # end if
+
+        # checking if already exists.
+        if function not in self.update_listeners:
+            self.update_listeners[function] = required_keywords
         else:
             logger.warning("listener already added.")
         # end if
-        return func
-    # end def
+        return function
+    # end def add_update_listenner
 
     def remove_update_listener(self, func):
+        """
+        Removes an function from the update listener list.
+        No error will be raised if it is already registered. In that case a warning will be logged,
+        but noting else will happen.
+
+
+        :param function:  The function to remove
+        :return: the function, unmodified
+        """
         if func in self.update_listeners:
-            self.update_listeners.remove(func)
+           del self.update_listeners[func]
         else:
             logger.warning("listener already removed.")
         # end if
@@ -68,22 +128,27 @@ class UpdatesMixin(TeleflaskMixinBase):
 
         No try catch stuff is done, will fail instantly, and not process any remaining listeners.
 
-        :param update:
-        :return: the last non-None result any listener returned.
+        :param update: incoming telegram update.
+        :return: nothing.
         """
-        for listener in self.update_listeners:
+        assert isinstance(update, Update)
+        for listener, required_fields in self.update_listeners.items():
             try:
-                self.process_result(update, listener(update))
+                if not required_fields or all([hasattr(update, f) and getattr(update, f) for f in required_fields]):
+                    # either filters evaluates to False, (None, empty list etc) which means it should not filter
+                    # or it has filters, than we need to check if that attributes really exist.
+                    self.process_result(update, listener(update))
+                # end if
             except Exception:
                 logger.exception("Error executing the update listener {func}.".format(func=listener))
-            # end if
+            # end try
         # end for
         super().process_update(update)
-    # end def
+    # end def process_update
 
     def do_startup(self):
         super().do_startup()
-    # end if
+    # end def
 # end class
 
 
@@ -95,7 +160,7 @@ class MessagesMixin(TeleflaskMixinBase):
 
     `add_message_listener` to add functions
     `remove_message_listener` to remove them again.
-    `@on_message` decorator as alias to `_message_listener`
+    `@on_message` decorator as alias to `add_message_listener`
 
     Example:
         This is the function we got:
@@ -169,7 +234,8 @@ class MessagesMixin(TeleflaskMixinBase):
         """
         Adds an listener for updates with messages.
         You can filter them if you supply a list of names of attributes which all need to be present.
-        No error will be raised if it is already registered. In that case a warning will be logged, but noting else will happen.
+        No error will be raised if it is already registered. In that case a warning will be logged,
+        but nothing else will happen, and the function is not added.
 
         Examples:
             >>> add_message_listener(func, required_keywords=["sticker", "caption"])
@@ -182,6 +248,7 @@ class MessagesMixin(TeleflaskMixinBase):
         :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
         :return: the function, unmodified
         """
+        # checking input.
         if not required_keywords:
             required_keywords = []
         elif isinstance(required_keywords, tuple):
@@ -191,6 +258,8 @@ class MessagesMixin(TeleflaskMixinBase):
         for keyword in required_keywords:
             assert isinstance(keyword, str)  # required_keywords must all be type str
         # end if
+
+        # checking if already exists.
         if function not in self.message_listeners:
             self.message_listeners[function] = required_keywords
         else:
@@ -200,10 +269,11 @@ class MessagesMixin(TeleflaskMixinBase):
         # end for
     # end def add_command
 
-    def remove_update_listener(self, func):
+    def remove_message_listener(self, func):
         """
-        Removes an function from the message update listener list.
-        No error will be raised if it is already registered. In that case a warning will be logged, but noting else will happen.
+        Removes an function from the message listener list.
+        No error will be raised if it is already registered. In that case a warning will be logged,
+        but noting else will happen.
 
 
         :param function:  The function to remove
@@ -222,9 +292,6 @@ class MessagesMixin(TeleflaskMixinBase):
         Iterates through self.message_listeners, and calls them with (update, app).
 
         No try catch stuff is done, will fail instantly, and not process any remaining listeners.
-
-        :param update:
-        :return: the last non-None result any listener returned.
 
         :param update: incoming telegram update.
         :return: nothing.
@@ -245,7 +312,6 @@ class MessagesMixin(TeleflaskMixinBase):
             # end for
         # end if
         super().process_update(update)
-        # end def
     # end def process_update
 
     def do_startup(self):
