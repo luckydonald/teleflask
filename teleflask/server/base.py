@@ -112,7 +112,9 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
         self.commands = dict()
         self._return_python_objects = return_python_objects
         self.bot = Bot(API_KEY, return_python_objects=return_python_objects)
-        self._username = self.bot.get_me().username  # TODO: fix for return_python_objects == False
+        myself = self.bot.get_me()
+        self._user_id = myself.id  # TODO: fix for return_python_objects == False
+        self._username = myself.username  # TODO: fix for return_python_objects == False, like:
         # self._username = self.bot.get_me().result.username  # return_python_objects = False
         self._webhook_url = None  # will be filled out by self.calculate_webhook_url()
         hookpath = self.calculate_webhook_url(hostname=hostname, hostpath=hostpath, hookpath=hookpath)
@@ -193,6 +195,11 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
     @property
     def username(self):
         return self._username
+    # end def
+
+    @property
+    def user_id(self):
+        return self._user_id
     # end def
 
     @property
