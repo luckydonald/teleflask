@@ -137,11 +137,11 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
 
         :param hostname: A hostname. Without the protocol.
                          Examples: "localhost", "example.com", "example.com:443"
-                         If None (default), the hostname comes from the URL_HOSTNAME env variable.
+                         If None (default), the hostname comes from the URL_HOSTNAME environment variable, or None if that fails.
         :param hostpath: The path after the hostname. It must start with a slash.
-                         Use this if you aren't at the root at the server.
+                         Use this if you aren't at the root at the server, i.e. use url_rewrite.
                          Example: "/bot2"
-                         If None (default), the path will be read from the URL_PATH env variable.
+                         If None (default), the path will be read from the URL_PATH environment variable, or "" if that fails.
         :param hookpath: Template for the route of incoming telegram webhook events. Must start with a slash.
                          The placeholder {API_KEY} will replaced with the telegram api key.
                          Note: This doesn't change any routing. You need to update any registered @app.route manually!
@@ -151,11 +151,11 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
         # #
         # #  try to fill out empty arguments
         # #
-        if not hostname:
+        if hostname:
             hostname = os.getenv('URL_HOSTNAME', None)
         # end if
-        if not hostpath:
-            hostpath = os.getenv('URL_PATH', None)
+        if hostpath is None:
+            hostpath = os.getenv('URL_PATH', "")
         # end if
         if not hookpath:
             hookpath = "/income/{API_KEY}"
@@ -172,8 +172,9 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
             hostname = hostname[len("https://"):]
             logger.warning("Automatically removed \"https://\" from hostname. Don't include it.")
         if hostname.startswith("http://"):
-            raise ValueError("Don't include the protocol ('http://') in the hostname. Also telegram doesn't support http, only https.")
-        if not hostpath.startswith("/"):
+            raise ValueError("Don't include the protocol ('http://') in the hostname. "
+                             "Also telegram doesn't support http, only https.")
+        if not hostpath == "" and not hostpath.startswith("/"):
             logger.info("hostpath didn't start with a slash: {value!r} Will be added automatically".format(value=hostpath))
             hostpath = "/" + hostpath
         # end def
