@@ -90,10 +90,12 @@ class Message(object):
         return text
 
     def is_empty(self):
-        return not self.is_not_empty
+        return not self.is_not_empty()
 
     def is_not_empty(self):
         if hasattr(self, "text") and self.text:
+            return True
+        if hasattr(self, "file_id") and self.file_id:
             return True
         if hasattr(self, "file_url") and self.file_url:
             return True
