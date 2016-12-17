@@ -72,6 +72,8 @@ class Message(object):
         text_parts = []
         if hasattr(self, "text") and self.text:
             text_parts.append("text: \"%s\"" % (self.text.replace("\n", "\\n")))
+        if hasattr(self, "file_id") and self.file_id:
+            text_parts.append("file_id: \"%s\"" % (self.file_id))
         if hasattr(self, "file_url") and self.file_url:
             text_parts.append("file_url: \"%s\"" % (self.file_url))
         if hasattr(self, "file_path") and self.file_path:
@@ -312,7 +314,7 @@ class DocumentMessage(Message):
         if self.receiver:
             receiver = self.receiver
         # end if
-        if not self.reply_id is DEFAULT_MESSAGE_ID:
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
             reply_id = self.reply_id
         # end if
         self.prepare_file()
@@ -350,7 +352,7 @@ class PhotoMessage(DocumentMessage):
         if self.receiver:
             receiver = self.receiver
         # end if
-        if not self.reply_id is DEFAULT_MESSAGE_ID:
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
             reply_id = self.reply_id
         # end if
         self.prepare_file()
@@ -419,6 +421,73 @@ def ImageMessage(file_path=None, file_url=None, file_content=None, caption=None,
 # end class
 
 
+class FileIDMessage(Message):
+    def __init__(self, file_id, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False):
+        """
+        :param file_id: the ID of the file
+        :param caption: A optional string.
+        :param receiver:
+        :param reply_id:
+        :param reply_markup:
+        :param disable_notification:
+        """
+        super().__init__(receiver=receiver, reply_id=reply_id, reply_markup=reply_markup,
+                         disable_notification=disable_notification)
+        self.file_id = file_id
+        self.caption=caption
+    # end def __init__
+
+    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=10, jitter=None)
+    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
+        if self.receiver:
+            receiver = self.receiver
+        # end if
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
+            reply_id = self.reply_id
+        # end if
+        try:
+            return self.actual_sending(sender, receiver, reply_id)
+        except TgApiServerException as e:
+            should_backoff(e)  # checks if it should raise an DoRetryException
+            raise  # else it just raises as usual
+        # end try
+    # end def send
+
+    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+        return sender.send_document(
+            receiver, self.file_id, caption=self.caption, reply_to_message_id=reply_id,
+            reply_markup=self.reply_markup, disable_notification=self.disable_notification
+        )
+    # end def
+# end class
+
+
+class StickerMessage(FileIDMessage):
+    def __init__(self, file_id, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False):
+        """
+        :param file_id: the ID of the file
+        :param receiver:
+        :param reply_id:
+        :param reply_markup:
+        :param disable_notification:
+        """
+        super().__init__(
+            file_id, caption=None, receiver=receiver, reply_id=reply_id, reply_markup=reply_markup,
+            disable_notification=disable_notification
+        )
+    # end def __init__
+
+    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+        return sender.send_sticker(
+            receiver, self.file_id, reply_to_message_id=reply_id,
+            reply_markup=self.reply_markup, disable_notification=self.disable_notification
+        )
+    # end def
+# end class
+
+
 class ForwardMessage(Message):
     def __init__(self, msg_id, from_chat_id, receiver: int=None, reply_id=DEFAULT_MESSAGE_ID):
         super().__init__(receiver=receiver, reply_id=reply_id)
@@ -434,7 +503,7 @@ class ForwardMessage(Message):
         if self.receiver:
             receiver = self.receiver
         # end if
-        if not self.reply_id is DEFAULT_MESSAGE_ID:
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
             reply_id = self.reply_id
         # end if
         try:
@@ -510,7 +579,7 @@ class TextMessage(Message):
         if self.receiver:
             receiver = self.receiver
         # end if
-        if not self.reply_id is DEFAULT_MESSAGE_ID:
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
             reply_id = self.reply_id
         # end if
         try:
