@@ -1,6 +1,6 @@
 # teleflask
 A python telegram bot framework based on flask and pytgbot    
-Version 0.0.5
+Version 0.0.6
 
 
 ## Usage
