@@ -215,10 +215,17 @@ class TeleflaskBase(Flask, TeleflaskMixinBase):
         :return:
         """
         webhook = self.bot.get_webhook_info()  # todo: dict-version if return_python_objects==False
-        logger.info("Removing webhook if any. Last webhook pointed to {url!r}".format(url=self.hide_api_key(webhook.url)))
-        logger.debug(self.bot.set_webhook())
-        logger.info("Setting webhook to {url}".format(url=self.hide_api_key(self.webhook_url)))
-        logger.debug(self.bot.set_webhook(url=self.webhook_url))
+        from pytgbot.api_types.receivable import WebhookInfo
+        assert isinstance(webhook, WebhookInfo)
+        logger.info("Last webhook pointed to {url!r}.\nMetadata: {hook}".format(
+            url=self.hide_api_key(webhook.url), hook=self.hide_api_key("{!r}".format(webhook.to_array()))
+        ))
+        if webhook.url == self.webhook_url:
+            logger.info("Webhook set correctly. No need to change.")
+        else:
+            logger.info("Setting webhook to {url}".format(url=self.hide_api_key(self.webhook_url)))
+            logger.debug(self.bot.set_webhook(url=self.webhook_url))
+        # end if
         super().do_startup()
     # end def
 
