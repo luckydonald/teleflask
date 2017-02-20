@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 def _class_self_decorate(decorator_name):
     """
     Adds self to a decorator of a class when it must be used on functions of the same class.
+    This is to be able to use it already before the class is completely parsed.
 
     >>> class Foo():
     >>>    def jsonfify(self, func):

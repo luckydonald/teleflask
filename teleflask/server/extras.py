@@ -3,7 +3,7 @@ from .base import TeleflaskBase
 from .mixins import StartupMixin, BotCommandsMixin, UpdatesMixin, MessagesMixin
 
 __author__ = 'luckydonald'
-__all__ = ["TeleflaskCommands", "TeleflaskMessages", "TeleflaskUpdates", "TeleflaskStartup", "TeleflaskComplete"]
+__all__ = ["TeleflaskCommands", "TeleflaskMessages", "TeleflaskUpdates", "TeleflaskStartup", "Teleflask"]
 
 
 class TeleflaskCommands(BotCommandsMixin, TeleflaskBase):
@@ -58,9 +58,12 @@ class TeleflaskStartup(StartupMixin, TeleflaskBase):
 # end class
 
 
-class TeleflaskComplete(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskBase):
+class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskBase):
     """
+    This is the full package, including all provided mixins.
+
     You can use:
+
      `app.add_startup_listener` to let the given function be called on server/bot startup
      `app.remove_startup_listener` to remove the given function again
      `@app.on_startup` decorator which does the same as add_startup_listener.
@@ -81,6 +84,20 @@ class TeleflaskComplete(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMi
      `@app.command("command")` decorator as alias to `add_command`
      `@app.on_command("command")` decorator as alias to `add_command`
      See :class:`teleflask.mixins.BotCommandsMixin` for complete information.
+
+
+     You can have also have a look at :class:`teleflask.extras.TeleflaskCommands`,
+     :class:`teleflask.extras.TeleflaskMessages`, :class:`teleflask.extras.TeleflaskUpdates` and
+     :class:`teleflask.extras.TeleflaskStartup` if you are looking for only some of the functionality,
+     but don't want to create a class implementing the mixins yourself.
     """
     pass
 # end class
+
+class TeleflaskComplete(Teleflask):
+    def __init__(self, *args, **kwargs):
+        import warnings
+        warnings.warn('Warning: TeleflaskComplete is deprecated. Please use the Teleflask class.',
+                      DeprecationWarning)
+        super().__init__(*args, **kwargs)
+    # end def

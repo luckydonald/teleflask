@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from teleflask.server import TeleflaskComplete
+from flask import Flask
+from teleflask import Teleflask
 from teleflask.messages import TextMessage
 
 
@@ -7,9 +8,9 @@ __author__ = 'luckydonald'
 
 from somewhere import API_KEY  # I import it from some file which is kept private, not in git.
 # Just set API_KEY = "your-api-key".
-app = TeleflaskComplete(__name__, API_KEY)
-# instead of writing
-# app = Flask(__name__)
+app = Flask(__name__)
+bot = Teleflask(API_KEY)
+bot.init_app(app)
 
 
 @app.route("/")
@@ -19,7 +20,7 @@ def index():
 
 
 # Register the /start command
-@app.command("start")
+@bot.command("start")
 def start(update, text):
     # update is the update object. It is of type pytgbot.api_types.receivable.updates.Update
     # text is the text after the command. Can be empty. Type is str.
@@ -28,7 +29,7 @@ def start(update, text):
 
 
 # register a function to be called for updates.
-@app.on_update
+@bot.on_update
 def foo(update):
     from pytgbot.api_types.receivable.updates import Update
     assert isinstance(update, Update)

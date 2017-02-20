@@ -55,7 +55,9 @@ class UpdatesMixin(TeleflaskMixinBase):
             not isinstance(required_keywords[0], str) # not string -> must be function
              ):
             # @on_update
-            return on_update_inner(function=required_keywords[0])  # not string -> must be function
+            function = required_keywords[0]
+            required_keywords = None
+            return on_update_inner(function)  # not string -> must be function
         # end if
         # -> else: *required_keywords are the strings
         # @on_update("update_id", "message", "whatever")
@@ -223,7 +225,9 @@ class MessagesMixin(TeleflaskMixinBase):
             not isinstance(required_keywords[0], str) # not string -> must be function
              ):
             # @on_message
-            return on_message_inner(function=required_keywords[0])  # not string -> must be function
+            function = required_keywords[0]
+            required_keywords = None
+            return on_message_inner(function=function)  # not string -> must be function
         # end if
         # -> else: *required_keywords are the strings
         # @on_message("text", "sticker", "whatever")
@@ -502,21 +506,23 @@ class StartupMixin(TeleflaskMixinBase):
 
         Functions added to your app:
 
-         `@app.on_update` decorator
-         `app.add_update_listener(func)`
-         `app.remove_update_listener(func)`
+         `@app.on_startup` decorator
+         `app.add_startup_listener(func)`
+         `app.remove_startup_listener(func)`
 
         The registered function will be called on either the server start, or as soon as registered.
 
          So you could use it like this:
 
-         >>> @app.on_update
-         >>> def foobar(update):
-         >>>     assert isinstance(update, pytgbot.api_types.receivable.updates.Update)
-         >>>     pass
+         >>> @app.on_startup
+         >>> def foobar():
+         >>>     print("doing stuff on boot")
         """
-    startup_listeners = list()
-    startup_already_run = False
+    def __init__(self, *args, **kwargs):
+        self.startup_listeners = list()
+        self.startup_already_run = False
+        super(StartupMixin, self).__init__(*args, **kwargs)
+    # end def
 
     def on_startup(self, func):
         """
@@ -533,6 +539,15 @@ class StartupMixin(TeleflaskMixinBase):
     # end def
 
     def add_startup_listener(self, func):
+        """
+        Usage:
+            >>> def foo():
+            >>>     print("doing stuff on boot")
+            >>> app.add_startup_listener(foo)
+
+        :param func:
+        :return:
+        """
         if func not in self.startup_listeners:
             self.startup_listeners.append(func)
             if self.startup_already_run:
