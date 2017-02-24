@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+from collections import OrderedDict
+
 from pytgbot.api_types.receivable.updates import Update
 
 from .base import TeleflaskMixinBase
@@ -35,7 +37,10 @@ class UpdatesMixin(TeleflaskMixinBase):
      >>>     # only get inline queries.
 
     """
-    update_listeners = dict()
+    def __init__(self, *args, **kwargs):
+        self.update_listeners = OrderedDict()  # Python3.6, dicts are sorted # Schema: {func: ["message", "key", "..."], func: None}
+        super(UpdatesMixin, self).__init__(*args, **kwargs)
+    # end def
 
     def on_update(self, *required_keywords):
         """
@@ -49,10 +54,10 @@ class UpdatesMixin(TeleflaskMixinBase):
             >>>     # you can use app.bot to access the bot's messages functions
         """
         def on_update_inner(function):
-            self.add_update_listener(function, required_keywords=required_keywords)
+            return self.add_update_listener(function, required_keywords=required_keywords)
         # end def
         if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str) # not string -> must be function
+            not isinstance(required_keywords[0], str)  # not string -> must be function
              ):
             # @on_update
             function = required_keywords[0]
@@ -88,20 +93,33 @@ class UpdatesMixin(TeleflaskMixinBase):
         """
         # checking input.
         if not required_keywords:
-            required_keywords = []
-        elif isinstance(required_keywords, tuple):
-            required_keywords = list(required_keywords)
-        # end if
-        assert isinstance(required_keywords, list)
-        for keyword in required_keywords:
-            assert isinstance(keyword, str)  # required_keywords must all be type str
-        # end if
-
-        # checking if already exists.
-        if function not in self.update_listeners:
+            required_keywords = None
+            if function in self.update_listeners:
+                logging.debug("existing listener filter removed.")
+            # end if
             self.update_listeners[function] = required_keywords
         else:
-            logger.warning("listener already added.")
+            if isinstance(required_keywords, str):
+                required_keywords = [required_keywords]
+            elif isinstance(required_keywords, tuple):
+                required_keywords = list(required_keywords)
+            # end if
+            assert isinstance(required_keywords, list)
+            for keyword in required_keywords:
+                assert isinstance(keyword, str)  # required_keywords must all be type str
+            # end if
+
+            # checking if already exists.
+            if function not in self.update_listeners:
+                logging.debug("added function to listeners")
+                self.update_listeners[function] = required_keywords
+            elif self.update_listeners[function] is None:
+                logger.debug("listener unchanged because was already listening to everything")
+            else:
+                # add the keywords.
+                self.update_listeners[function].extend(required_keywords)
+                logger.debug("listener required keywords updated to {!r}".format(self.update_listeners[function]))
+            # end for
         # end if
         return function
     # end def add_update_listenner
@@ -133,13 +151,13 @@ class UpdatesMixin(TeleflaskMixinBase):
         :param update: incoming telegram update.
         :return: nothing.
         """
-        assert isinstance(update, Update)
+        assert isinstance(update, Update)  # Todo: non python objects
         for listener, required_fields in self.update_listeners.items():
             try:
                 if not required_fields or all([hasattr(update, f) and getattr(update, f) for f in required_fields]):
                     # either filters evaluates to False, (None, empty list etc) which means it should not filter
                     # or it has filters, than we need to check if that attributes really exist.
-                    self.process_result(update, listener(update))
+                    self.process_result(update, listener(update))  # this will be TeleflaskMixinBase.process_result()
                 # end if
             except Exception:
                 logger.exception("Error executing the update listener {func}.".format(func=listener))
