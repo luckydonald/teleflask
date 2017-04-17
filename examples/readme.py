@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask
 from teleflask import Teleflask
-from teleflask.messages import TextMessage
+from teleflask.messages import TextMessage, PlainMessage, MarkdownMessage, HTMLMessage
 
 
 __author__ = 'luckydonald'
@@ -24,7 +24,8 @@ def index():
 def start(update, text):
     # update is the update object. It is of type pytgbot.api_types.receivable.updates.Update
     # text is the text after the command. Can be empty. Type is str.
-    return TextMessage("<b>Hello!</b> Thanks for using @" + app.username + "!", parse_mode="html")
+    return HTMLMessage("<b>Hello!</b> Thanks for using @" + app.username + "!")
+    # return TextMessage("<b>Hello!</b> Thanks for using @" + app.username + "!", parse_mode="html")
 # end def
 
 
@@ -40,6 +41,7 @@ def foo(update):
         # you could use @app.on_message instead of this if.
     # end if
     if update.message.new_chat_member:
-        return TextMessage("Welcome!")
+        return PlainMessage("Welcome!")
+        # return TextMessage("Welcome!", parse_mode="text")
     # end if
 # end def

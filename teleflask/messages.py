@@ -520,6 +520,10 @@ class ForwardMessage(Message):
 # end class
 
 
+PARSE_MODE_TEXT = "text"
+PARSE_MODE_HTML = "html"
+PARSE_MODE_MARKDOWN = "markdown"
+
 
 class TextMessage(Message):
     from luckydonaldUtils.functions import caller
@@ -600,12 +604,50 @@ class TextMessage(Message):
         # end if
         return result
     # end def
+# end class
+
+
+class PlainMessage(TextMessage):
+    """
+    Subclass of :class:`TextMessage`, with the type set to "text".
+    """
+    def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+        super().__init__(text, receiver, reply_id, PARSE_MODE_TEXT, reply_markup, disable_notification,
+                         disable_web_page_preview, call)
+    # end def
+# end class
+
+
+class HTMLMessage(TextMessage):
+    """
+    Subclass of :class:`TextMessage`, with the type set to "html".
+    """
+    def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+        super().__init__(text, receiver, reply_id, PARSE_MODE_HTML, reply_markup, disable_notification,
+                         disable_web_page_preview, call)
+    # end def
+# end class
+
+
+class MarkdownMessage(TextMessage):
+    """
+    Subclass of :class:`TextMessage`, with the type set to "markdown".
+    """
+    def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+        super().__init__(text, receiver, reply_id, PARSE_MODE_MARKDOWN, reply_markup, disable_notification,
+                         disable_web_page_preview, call)
+    # end def
+# end class
 
 
 def escape_markdown(input_string, strip=False):
     """
     Escapes markdown tags, so text is safe for telegram.
     "lol_wat" -> "lol\_wat"
+     Funfact, Telegram is parsing markdown so poorly, you should probably use html instead.
 
     :param input_string:
     :return:
