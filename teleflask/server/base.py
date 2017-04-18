@@ -49,18 +49,26 @@ class TeleflaskBase(TeleflaskMixinBase):
     VERSION = VERSION
     __version__ = VERSION
 
-    def __init__(self, api_key, app=None,
+    def __init__(self, api_key, app=None, blueprint=None,
                  # FlaskTgBot kwargs:
                  hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
                  debug_routes=False, disable_setting_webhook=False,
                  # pytgbot kwargs:
                  return_python_objects=True):
         """
-
+        A new Teleflask(Base) object.
+        
+        
         :param api_key: The key for the telegram bot api.
         :type  api_key: str
 
-        :param app: The flask app
+        :param app: The flask app if you don't like to call :meth:`init_app` yourself. 
+        :type  app: flask.Flask | None
+        
+        :param blueprint: A blueprint, where the telegram webhook (and the debug endpoints, see `debug_routes`) will be registered in.
+                          Use if you don't like to call :meth:`init_app` yourself.
+                          If not set, but `app` is, it will register any routes to the `app` itself.
+        :type  blueprint: flask.Blueprint | None
 
         :param hostname: The hostname or IP (and maybe a port) where this server is reachable in the internet.
                          Specify the path with :param hostpath:
@@ -98,18 +106,24 @@ class TeleflaskBase(TeleflaskMixinBase):
         self.hostpath = hostpath
         self.hookpath = hookpath
         self.disable_setting_webhook=disable_setting_webhook
-        if app:
-            self.init_app(app, debug_routes=debug_routes)
+        if app or blueprint:
+            self.init_app(app, blueprint=blueprint, debug_routes=debug_routes)
         # end if
     # end def
 
-    def init_app(self, app, debug_routes=False):
+    def init_app(self, app, blueprint=None, debug_routes=False):
         """
-        Sets the flask app, the telegram webhook and adds a routing endpoint.
+        Gives us access to the flask app (and optionally provide a Blueprint),
+        where we will add a routing endpoint for the telegram webhook.
+        Also set's 
         Finally calls `self.do_startup()`
 
         :param app: the :class:`flask.Flask` app
         :type  app: flask.Flask
+        
+        :param blueprint: A blueprint, where the telegram webhook (and the debug endpoints, see `debug_routes`) will be registered in.
+                          If `None` was provided, it will register any routes to the `app` itself.
+        :type  blueprint: flask.Blueprint | None
 
         :param debug_routes: Add extra url endpoints, useful for debugging. See setup_routes(...)
         :type  debug_routes: bool
@@ -118,9 +132,10 @@ class TeleflaskBase(TeleflaskMixinBase):
         :rtype: None
         """
         self.app = app
+        self.blueprint = blueprint
         hookpath, self._webhook_url = self.calculate_webhook_url(hostname=self.hostname, hostpath=self.hostpath, hookpath=self.hookpath)
         self.setup_routes(hookpath=hookpath, debug_routes=debug_routes)
-        self.do_startup()  # this will set the webhook in the bot api.
+        self.set_webhook()  # this will set the webhook in the bot api.
 
     def calculate_webhook_url(self, hostname=None, hostpath=None, hookpath="/income/{API_KEY}"):
         """
@@ -132,12 +147,17 @@ class TeleflaskBase(TeleflaskMixinBase):
         :Example:
 
         Your bot is at ``https://example.com:443/bot2/``,
-        and you want to receive updates from telegram at ``https://example.com:443/bot2/tg-webhook/{API_KEY}``.
+        you want your flask to get the updates at ``/tg-webhook/{API_KEY}``.
+        This means Telegram will have to send the updates to ``https://example.com:443/bot2/tg-webhook/{API_KEY}``.
+    
         You now would set
             hostname = "example.com:443",
             hostpath = "/bot2",
             hookpath = "/tg-webhook/{API_KEY}"
-
+        
+        Note: Set ``hostpath`` if you are behind a reverse proxy, and/or your flask app root is *not* at the web server root.
+        
+    
         :param hostname: A hostname. Without the protocol.
                          Examples: "localhost", "example.com", "example.com:443"
                          If None (default), the hostname comes from the URL_HOSTNAME environment variable, or from http://ipinfo.io if that fails.
@@ -167,17 +187,26 @@ class TeleflaskBase(TeleflaskMixinBase):
         # #
         # #  check if the path looks at least a bit valid
         # #
-        logger.debug("hostname={hostn}, hostpath={hostp}, hookpath={hookp}".format(
+        logger.debug("hostname={hostn!r}, hostpath={hostp!r}, hookpath={hookp!r}".format(
             hostn=hostname, hostp=hostpath, hookp=hookpath
         ))
-        if hostname.endswith("/"):
-            raise ValueError("hostname can't end with a slash: {value}".format(value=hostname))
-        if hostname.startswith("https://"):
-            hostname = hostname[len("https://"):]
-            logger.warning("Automatically removed \"https://\" from hostname. Don't include it.")
-        if hostname.startswith("http://"):
-            raise ValueError("Don't include the protocol ('http://') in the hostname. "
-                             "Also telegram doesn't support http, only https.")
+        if hostname:
+            if hostname.endswith("/"):
+                raise ValueError("hostname can't end with a slash: {value}".format(value=hostname))
+            # end if
+            if hostname.startswith("https://"):
+                hostname = hostname[len("https://"):]
+                logger.warning("Automatically removed \"https://\" from hostname. Don't include it.")
+            # end if
+            if hostname.startswith("http://"):
+                raise ValueError("Don't include the protocol ('http://') in the hostname. "
+                                 "Also telegram doesn't support http, only https.")
+            # end if
+        else:  # no hostname
+            info = requests.get('http://ipinfo.io').json()
+            hostname = str(info["ip"])
+            logger.warning("URL_HOSTNAME env not set, falling back to ip address: {ip!r}".format(ip=hostname))
+        # end if
         if not hostpath == "" and not hostpath.startswith("/"):
             logger.info("hostpath didn't start with a slash: {value!r} Will be added automatically".format(value=hostpath))
             hostpath = "/" + hostpath
@@ -186,14 +215,12 @@ class TeleflaskBase(TeleflaskMixinBase):
             raise ValueError("hookpath must start with a slash: {value!r}".format(value=hostpath))
         # end def
         hookpath = hookpath.format(API_KEY=self.__api_key)
-        if not hostname:
-            info = requests.get('http://ipinfo.io').json()
-            hostname = str(info["ip"])
-            logger.warning("URL_HOSTNAME env not set, falling back to ip address: {ip!r}".format(ip=hostname))
-        # end if
         if not hostpath:
             logger.info("URL_PATH is not set.")
         webhook_url = "https://{hostname}{hostpath}{hookpath}".format(hostname=hostname, hostpath=hostpath, hookpath=hookpath)
+        logger.debug("Tele={hostn!r}, hostpath={hostp!r}, hookpath={hookp!r}".format(
+            hostn=hostname, hostp=hostpath, hookp=hookpath
+        ))
         return hookpath, webhook_url
     # end def
 
@@ -212,26 +239,26 @@ class TeleflaskBase(TeleflaskMixinBase):
         return self._webhook_url
     # end def
 
-    def do_startup(self):
+    def set_webhook(self):
         """
-        This code is executed after server boot.
         Sets the telegram webhook.
+        Checks Telegram if there is a webhook set, and if it needs to be changed. 
 
         :return:
         """
         assert isinstance(self.bot, Bot)
-        webhook = self.bot.get_webhook_info()
+        existing_webhook = self.bot.get_webhook_info()
 
         if self._return_python_objects:
             from pytgbot.api_types.receivable import WebhookInfo
-            assert isinstance(webhook, WebhookInfo)
-            webhook_url = webhook.url
-            webhook_meta = webhook.to_array()
+            assert isinstance(existing_webhook, WebhookInfo)
+            webhook_url = existing_webhook.url
+            webhook_meta = existing_webhook.to_array()
         else:
-            webhook_url = webhook["result"]["url"]
-            webhook_meta = webhook["result"]
+            webhook_url = existing_webhook["result"]["url"]
+            webhook_meta = existing_webhook["result"]
         # end def
-        del webhook
+        del existing_webhook
         logger.info("Last webhook pointed to {url!r}.\nMetadata: {hook}".format(
             url=self.hide_api_key(webhook_url), hook=self.hide_api_key("{!r}".format(webhook_meta))
             ))
@@ -245,18 +272,32 @@ class TeleflaskBase(TeleflaskMixinBase):
                 logger.info("Would set webhook to {url!r}, but is disabled by DISABLE_SETTING_TELEGRAM_WEBHOOK config.".format(url=self.hide_api_key(self.webhook_url)))
             # end if
         # end if
+    # end def
+
+    def do_startup(self):
+        """
+        This code is executed after server boot.
+        
+        Sets the telegram webhook (see :meth:`set_webhook(self)`)
+        and calls `super().do_setup()` for the superclass (e.g. other mixins)
+
+        :return:
+        """
+        self.set_webhook()
         super().do_startup()
     # end def
 
     def hide_api_key(self, string):
         """
-        Replaces the api key with "<API_KEY>"
+        Replaces the api key with "<API_KEY>" in a given string.
+        
+        Note: if the given object is no string, :meth:`str(object)` is called first.
 
         :param string: The str which can contain the api key.
         :return: string with the key replaced
         """
-        if not string:
-            return ""
+        if not isinstance(string, str):
+            string = str(string)
         # end if
         return string.replace(self.__api_key, "<API_KEY>")
     # end def
@@ -420,22 +461,50 @@ class TeleflaskBase(TeleflaskMixinBase):
         return info
     # end def
 
-    def setup_routes(self, hookpath, debug_routes=False):
+    def get_router(self):
         """
-        Sets the
-        :param hookpath: The path where it expects telegram updates to hit flask.
-        :param debug_paths: Add paths to enable several debug stuff.
-        :return:
+        Where to call `add_url_rule` (aka. `@route`) on.
+        Returns either the blueprint if there is any, or the app.
+        
+        :raises ValueError: if neither blueprint nor app is set.
+        
+        :returns: either the blueprint if it is set, or the app.
+        :rtype: flask.Blueprint | flask.Flask
         """
-        # Todo: Find out how to handle blueprints
+        if self.blueprint:
+            return self.blueprint
+        # end if
         if not self.app:
             raise ValueError("The app (self.app) is not set.")
         # end if
-        self.app.add_url_rule(hookpath, endpoint=None, view_func=self.view_updates, methods=['POST'])
+        return self.app
+
+    def setup_routes(self, hookpath, debug_routes=False):
+        """
+        Sets the pathes to the registered blueprint/app:
+            - "webhook" (self.view_updates) at hookpath
+        Also, if `debug_routes` is `True`:
+            - "exec" (self.view_exec) at "/exec/API_KEY/<command>"  (`API_KEY` is filled in, `<command>` is any Telegram API command.)
+            - "status" (self.view_status) at "/status"
+            - "hostinfo" (self.view_hostinfo) at "/hostinfo"
+        
+        :param hookpath: The path where it expects telegram updates to hit the flask app/blueprint.
+        :type  hookpath: str
+        
+        :param debug_paths: Add several debug pathes.
+        :type  debug_routes: bool
+        """
+        # Todo: Find out how to handle blueprints
+        if not self.app and not self.blueprint:
+            raise ValueError("No app (self.app) or Blueprint (self.blueprint) was set.")
+        # end if
+        router = self.get_router()
+        logger.info("Adding webhook route: {url!r}".format(url=hookpath))
+        router.add_url_rule(hookpath, endpoint="webhook", view_func=self.view_updates, methods=['POST'])
         if debug_routes:
-            self.app.add_url_rule("/exec/<api_key>/<command>", endpoint=None, view_func=self.view_exec)
-            self.app.add_url_rule("/status", endpoint=None, view_func=self.view_status)
-            self.app.add_url_rule("/hostinfo", endpoint=None, view_func=self.view_hostinfo)
+            router.add_url_rule("/exec/{api_key}/<command>".format(api_key=self.__api_key), endpoint="exec" , view_func=self.view_exec)
+            router.add_url_rule("/status", endpoint="status", view_func=self.view_status)
+            router.add_url_rule("/hostinfo", endpoint="hostinfo", view_func=self.view_hostinfo)
         # end if
     # end def
 
