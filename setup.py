@@ -58,7 +58,9 @@ setup(
         "flask",  # have flask
         "pytgbot>=2.3.3",  # connect to telegram
         "DictObject", "luckydonald-utils>=0.52",  # general utils
-        "python-magic", "backoff",  # messages messages
+        "python-magic", "backoff>=1.4.1",  # messages messages
+        # backoff >=1.4.1 because of a bug with the flask development server
+        # see https://github.com/litl/backoff/issues/30
         "requests", "requests[security]",  # connect with the internet in general
     ]
     # List additional groups of dependencies here (e.g. development dependencies).
