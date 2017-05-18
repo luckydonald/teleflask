@@ -58,7 +58,6 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         A new Teleflask(Base) object.
         
-        
         :param api_key: The key for the telegram bot api.
         :type  api_key: str
 
@@ -89,18 +88,10 @@ class TeleflaskBase(TeleflaskMixinBase):
         :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
         """
         self.__api_key = api_key
+        self.bot = None  # will be set in self.init_bot()
         self.update_listener = list()
         self.commands = dict()
         self._return_python_objects = return_python_objects
-        self.bot = Bot(api_key, return_python_objects=return_python_objects)
-        myself = self.bot.get_me()
-        if self._return_python_objects:
-            self._user_id = myself.id
-            self._username = myself.username
-        else:
-            self._user_id = myself["result"]["id"]
-            self._username = myself["result"]["username"]
-        # end if
         self._webhook_url = None  # will be filled out by self.calculate_webhook_url() in self.init_app(...)
         self.hostname = hostname  # e.g. "example.com:443"
         self.hostpath = hostpath
@@ -111,12 +102,32 @@ class TeleflaskBase(TeleflaskMixinBase):
         # end if
     # end def
 
+    def init_bot(self):
+        """
+        Creates the bot, and retrieves information about the bot itself (username, user_id) from telegram.
+        
+        :return: 
+        """
+        if not self.bot:  # so you can manually set it before calling `init_app(...)`,
+            # e.g. a mocking bot class for unit tests
+            self.bot = Bot(self.__api_key, return_python_objects=self._return_python_objects)
+        # end def
+        myself = self.bot.get_me()
+        if self._return_python_objects:
+            self._user_id = myself.id
+            self._username = myself.username
+        else:
+            self._user_id = myself["result"]["id"]
+            self._username = myself["result"]["username"]
+        # end if
+    # end def
+
     def init_app(self, app, blueprint=None, debug_routes=False):
         """
         Gives us access to the flask app (and optionally provide a Blueprint),
         where we will add a routing endpoint for the telegram webhook.
-        Also set's 
-        Finally calls `self.do_startup()`
+        
+        Calls `self.init_bot()`.
 
         :param app: the :class:`flask.Flask` app
         :type  app: flask.Flask
@@ -133,6 +144,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         self.app = app
         self.blueprint = blueprint
+        self.init_bot()
         hookpath, self._webhook_url = self.calculate_webhook_url(hostname=self.hostname, hostpath=self.hostpath, hookpath=self.hookpath)
         self.setup_routes(hookpath=hookpath, debug_routes=debug_routes)
         self.set_webhook()  # this will set the webhook in the bot api.
@@ -283,8 +295,9 @@ class TeleflaskBase(TeleflaskMixinBase):
 
         :return:
         """
-        self.set_webhook()
-        super().do_startup()
+        self.init_bot()  # retrieve username, user_id from telegram
+        self.set_webhook()  # register telegram webhook
+        super().do_startup()  # do more registered startup actions.
     # end def
 
     def hide_api_key(self, string):
@@ -518,7 +531,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         Send the result.
         It may be a :class:`Message` or a list of :class:`Message`s
         Strings will be send as :class:`TextMessage`, encoded as raw text.
-
+        
         :param manager:
         :param result:
         :return:
@@ -530,7 +543,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         # end if
         if isinstance(result, (Message, str, list, tuple)):
             self.send_message(result, reply_to, reply_id)
-        elif result == False or result is None:
+        elif result is False or result is None:
             logger.debug("Ignored result {res!r}".format(res=result))
             # ignore it
         else:
