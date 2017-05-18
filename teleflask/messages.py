@@ -612,9 +612,9 @@ class PlainMessage(TextMessage):
     Subclass of :class:`TextMessage`, with the type set to "text".
     """
     def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True):
         super().__init__(text, receiver, reply_id, PARSE_MODE_TEXT, reply_markup, disable_notification,
-                         disable_web_page_preview, call)
+                         disable_web_page_preview)
     # end def
 # end class
 
@@ -624,9 +624,9 @@ class HTMLMessage(TextMessage):
     Subclass of :class:`TextMessage`, with the type set to "html".
     """
     def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True):
         super().__init__(text, receiver, reply_id, PARSE_MODE_HTML, reply_markup, disable_notification,
-                         disable_web_page_preview, call)
+                         disable_web_page_preview)
     # end def
 # end class
 
@@ -636,9 +636,9 @@ class MarkdownMessage(TextMessage):
     Subclass of :class:`TextMessage`, with the type set to "markdown".
     """
     def __init__(self, text, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False, disable_web_page_preview=True, call=None):
+                 reply_markup=None, disable_notification=False, disable_web_page_preview=True):
         super().__init__(text, receiver, reply_id, PARSE_MODE_MARKDOWN, reply_markup, disable_notification,
-                         disable_web_page_preview, call)
+                         disable_web_page_preview)
     # end def
 # end class
 
