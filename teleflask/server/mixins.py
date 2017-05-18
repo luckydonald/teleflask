@@ -205,7 +205,11 @@ class MessagesMixin(TeleflaskMixinBase):
         Would be equal to:
         >>> app.add_message_listener(foobar, ["text"])
     """
-    message_listeners = dict()
+
+    def __init__(self, *args, **kwargs):
+        self.message_listeners = dict()
+        super(MessagesMixin, self).__init__(*args, **kwargs)
+    # end def
 
     def on_message(self, *required_keywords):
         """
@@ -378,11 +382,17 @@ class BotCommandsMixin(TeleflaskMixinBase):
         >>> def foobar(update, text):
         >>>     ...  # like above
     """
-    commands = dict()
+    def __init__(self, *args, **kwargs):
+        self.commands = dict()
+        super(BotCommandsMixin, self).__init__(*args, **kwargs)
+    # end def
 
-    def on_command(self, command):
+    def on_command(self, command, exclusive=False):
         """
         Decorator to register a command.
+        
+        :param command: The command to be registered. Omit the slash.
+        :param exclusive: Stop processing the update further, so no other listenere will be called if this command triggered.
 
         Usage:
             >>> @app.on_command("foo")
@@ -391,14 +401,24 @@ class BotCommandsMixin(TeleflaskMixinBase):
             >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
 
             If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+            
+            You can set to ignore other registered listeners to trigger.
+            
+            >>> @app.on_command("bar", exclusive=True)
+            >>> def bar(update, text)
+            >>>     return "Bar command happened."
+            
+            >>> @app.on_command("bar")
+            >>> def bar2(update, text)
+            >>>     return "This function will never be called."
 
         @on_command decorator. Actually is an alias to @command.
         :param command: the string of a command
         """
-        return self.command(command)
+        return self.command(command, exclusive=exclusive)
     # end if
 
-    def command(self, command):
+    def command(self, command, exclusive=False):
         """
         Decorator to register a command.
 
