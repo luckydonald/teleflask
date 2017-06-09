@@ -166,7 +166,7 @@ class UpdatesMixin(TeleflaskMixinBase):
         super().process_update(update)
     # end def process_update
 
-    def do_startup(self):
+    def do_startup(self):  # pragma: no cover
         super().do_startup()
     # end def
 # end class
@@ -340,7 +340,7 @@ class MessagesMixin(TeleflaskMixinBase):
         super().process_update(update)
     # end def process_update
 
-    def do_startup(self):
+    def do_startup(self):  # pragma: no cover
         super().do_startup()
     # end def
 # end class
@@ -433,12 +433,12 @@ class BotCommandsMixin(TeleflaskMixinBase):
         :param command: the string of a command
         """
         def register_command(func):
-            self.add_command(command, func)
+            self.add_command(command, func, exclusive=exclusive)
             return func
         return register_command
     # end def
 
-    def add_command(self, command, function):
+    def add_command(self, command, function, exclusive=False):
         """
         Adds `/command` and `/command@bot`
         (also the iOS urls `command:///command` and `command:///command@bot`)
@@ -455,22 +455,29 @@ class BotCommandsMixin(TeleflaskMixinBase):
         :return: Nothing
         """
         for cmd in self._yield_commands(command):
-            self.commands[cmd] = function
+            self.commands[cmd] = (function, exclusive)
         # end for
     # end def add_command
 
     def remove_command(self, command=None, function=None):
+        """
+        :param command: remove them by command, e.g. `test`
+        :param function: remove them by function
+        :return: 
+        """
         if command:
             for cmd in self._yield_commands(command):
                 if cmd not in self.commands:
                     continue
                 # end if
-                del self.commands["cmd"]
+                logger.debug("Deleting command {cmd!r}: {func}".format(cmd=cmd, func=self.commands[cmd]))
+                del self.commands[cmd]
             # end for
         # end if
         if function:
             for key, value in self.commands.items():
-                if value == function:
+                func, exclusive = value
+                if func == function:
                     del self.commands[key]
                 # end if
             # end for
@@ -494,19 +501,33 @@ class BotCommandsMixin(TeleflaskMixinBase):
         assert isinstance(update, Update)
         if update.message and update.message.text:
             txt = update.message.text.strip()
+            func = None
             if txt in self.commands:
-                logger.debug("Running command {input}.".format(input=txt))
+                logger.debug("Running command {input} (no text).".format(input=txt))
+                func, exclusive = self.commands[txt]
                 self._execute_command(self.commands[txt], update, txt, None)
             elif " " in txt and txt.split(" ")[0] in self.commands:
                 cmd, text = tuple(txt.split(" ", maxsplit=1))
-                logger.debug("Running command {cmd} ({input!r}).".format(cmd=cmd, input=txt))
-                self._execute_command(self.commands[cmd], update, cmd, text.strip())
+                logger.debug("Running command {cmd} (text={input!r}).".format(cmd=cmd, input=txt))
+                func, exclusive = self.commands[cmd]
+                self._execute_command(func, update, cmd, text.strip())
+            else:
+                logging.debug("No fitting registered command function found.")
+                exclusive = False  # so It won't abort.
+            # end if
+            if exclusive:
+                logger.debug(
+                    "Command function {func!r} ({cmd}) marked exclusive, stopping further processing.".format(
+                        func=func, cmd=cmd
+                    )
+                ) # not calling super().process_update(update)
+                return
             # end if
         # end if
         super().process_update(update)
     # end def process_update
 
-    def do_startup(self):
+    def do_startup(self):  # pragma: no cover
         super().do_startup()
     # end if
 
@@ -627,7 +648,7 @@ class StartupMixin(TeleflaskMixinBase):
         super().do_startup()
     # end def
 
-    def process_update(self, update):
+    def process_update(self, update):  # pragma: no cover
         super().process_update(update)
     # end if
 # end class

@@ -63,36 +63,45 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Tel
     This is the full package, including all provided mixins.
 
     You can use:
+    
+        Startup:
+            - `app.add_startup_listener` to let the given function be called on server/bot startup
+            - `app.remove_startup_listener` to remove the given function again
+            - `@app.on_startup` decorator which does the same as add_startup_listener.
+            See :class:`teleflask.mixins.StartupMixin` for complete information.
 
-     `app.add_startup_listener` to let the given function be called on server/bot startup
-     `app.remove_startup_listener` to remove the given function again
-     `@app.on_startup` decorator which does the same as add_startup_listener.
-     See :class:`teleflask.mixins.StartupMixin` for complete information.
+        Commands: 
+            - `app.add_command` to add command functions
+            - `app.remove_command` to remove them again.
+            - `@app.command("command")` decorator as alias to `add_command`
+            - `@app.on_command("command")` decorator as alias to `add_command`
+            See :class:`teleflask.mixins.BotCommandsMixin` for complete information.
 
-     `app.add_update_listener` to add functions to be called on incoming telegram updates.
-     `app.remove_update_listener` to remove them again.
-     `@app.on_update` decorator doing the same as `add_update_listener`
-     See :class:`teleflask.mixins.UpdatesMixin` for complete information.
+        Messages:
+            - `app.add_message_listener` to add functions
+            - `app.remove_message_listener` to remove them again.
+            - `@app.on_message` decorator as alias to `add_message_listener`
+            See :class:`teleflask.mixins.MessagesMixin` for complete information.
+     
+        Updates:
+            - `app.add_update_listener` to add functions to be called on incoming telegram updates.
+            - `app.remove_update_listener` to remove them again.
+            - `@app.on_update` decorator doing the same as `add_update_listener`
+            See :class:`teleflask.mixins.UpdatesMixin` for complete information.
 
-     `app.add_message_listener` to add functions
-     `app.remove_message_listener` to remove them again.
-     `@app.on_message` decorator as alias to `add_message_listener`
-     See :class:`teleflask.mixins.MessagesMixin` for complete information.
+    Execution order:
+    
+        It will first check for commands (`@command`), then for messages (`@on_message`) and 
+        finally for update listeners (`@on_update`)
 
-     `app.add_command` to add command functions
-     `app.remove_command` to remove them again.
-     `@app.command("command")` decorator as alias to `add_command`
-     `@app.on_command("command")` decorator as alias to `add_command`
-     See :class:`teleflask.mixins.BotCommandsMixin` for complete information.
-
-
-     You can have also have a look at :class:`teleflask.extras.TeleflaskCommands`,
-     :class:`teleflask.extras.TeleflaskMessages`, :class:`teleflask.extras.TeleflaskUpdates` and
-     :class:`teleflask.extras.TeleflaskStartup` if you are looking for only some of the functionality,
-     but don't want to create a class implementing the mixins yourself.
+    Functionality is separated into mixin classes. This means you can plug together a class with just the functions you need.
+    But we also provide some ready-build cases:    
+        :class:`teleflask.extras.TeleflaskCommands`, :class:`teleflask.extras.TeleflaskMessages`,
+        :class:`teleflask.extras.TeleflaskUpdates` and :class:`teleflask.extras.TeleflaskStartup`.
     """
     pass
 # end class
+
 
 class TeleflaskComplete(Teleflask):
     def __init__(self, *args, **kwargs):
