@@ -36,6 +36,10 @@
             - this is relevant for `@on_update`, too.
         - Added unit tests for `UpdatesMixin`.
 
+- Fixes in `messages`:
+    - Let `MessageWithReplies` also return the results.
+    - Allow `TypingMessage` to use the `TypingMessage.CANCEL`.
+
 - specified minimum versions for some dependencies
     - `pytgbot>=2.3.3` (for the new webhooks)
     - `luckydonald-utils>=0.52` (needed `cut_paragraphs` in `messages.py`)

@@ -222,11 +222,11 @@ class TypingMessage(Message):
     def __init__(self, receiver: int=None, status=TYPING, reply_markup=None):
         super().__init__(receiver=receiver)
         self.status = status
-        assert status in [
+        assert status in [  # check if is a valid status
             TypingMessage.TYPING, TypingMessage.RECORD_VIDEO, TypingMessage.UPLOAD_VIDEO, TypingMessage.RECORD_AUDIO,
             TypingMessage.UPLOAD_AUDIO, TypingMessage.UPLOAD_PHOTO, TypingMessage.UPLOAD_DOCUMENT,
-            TypingMessage.SELECTING_GEO
-        ]  # valid status
+            TypingMessage.SELECTING_GEO, TypingMessage.CANCEL
+        ]  # check if is a valid status
         self.receiver = receiver
     # end def __init__
 
