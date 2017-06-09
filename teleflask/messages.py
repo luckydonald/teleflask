@@ -180,18 +180,30 @@ class MessageWithReplies(Message):
     # end def
 
     def send(self, sender: PytgbotApiBot, receiver, reply_id):
+        """
+        Sends a MessageWithReplies.
+        First sends the `self.top_message`, and then the `self.reply_messages`
+        
+        Will return a list with all the results.
+        
+        :return: list of all results. `top_message` first, followed by the `reply_messages`.
+        :rtype: list
+        """
         top_message_result = self.top_message.send(sender, receiver=receiver, reply_id=reply_id)
         assert_instance(top_message_result, PytgbotApiMessage)
         reply_id = top_message_result.message_id
         # end if
         reply_messages = list(self.reply_messages)  # tuple -> list, just in case
+        reply_results = [top_message_result,]  # the results of the sending.
         for child_msg in reply_messages:
             if isinstance(child_msg, (list, tuple)):
                 reply_messages.extend(child_msg)
                 continue
             assert_instance(child_msg, Message)
-            child_msg.send(sender, receiver, reply_id)
+            result = child_msg.send(sender, receiver, reply_id)
+            reply_results.append(result)
         # end for
+        return reply_results
     # end def
 # end class MessageWithReplies
 
@@ -309,7 +321,6 @@ class DocumentMessage(Message):
             self.file = InputFileFromURL(self.file_url, file_mime=self.file_mime)
         # end if
     # end def prepare_file
-
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=10, jitter=None)
     def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
@@ -598,10 +609,11 @@ class TextMessage(Message):
             should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
-        if result and self._next_msg:
-            pass  # TODO pass current message as reply id.
-            # self._next_msg.reply_id == result
-        # end if
+
+        # if result and self._next_msg:
+        #     # pass current message as reply id.
+        #     self._next_msg.reply_id == result
+        # # end if
         return result
     # end def
 # end class
