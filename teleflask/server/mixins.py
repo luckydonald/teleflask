@@ -156,7 +156,7 @@ class UpdatesMixin(TeleflaskMixinBase):
                         # either filters evaluates to False, (None, empty list etc) which means it should not filter
                         # or it has filters, than we need to check if that attributes really exist.
                         self.process_result(update, listener(update))  # this will be TeleflaskMixinBase.process_result()
-                        break
+                        break  # stop processing other required_fields combinations
                     # end if
                 except Exception:
                     logger.exception("Error executing the update listener {func}.".format(func=listener))
@@ -219,20 +219,23 @@ class MessagesMixin(TeleflaskMixinBase):
 
         Usage:
             >>> @app.on_message
-            >>> def foo(msg):
+            >>> def foo(update, msg):
             >>>     # all messages
+            >>>     assert isinstance(update, Update)
             >>>     assert isinstance(msg, Message)
             >>>     app.bot.send_message(msg.chat.id, "you sent any message!")
 
             >>> @app.on_message("text")
-            >>> def foo(msg):
+            >>> def foo(update, msg):
             >>>     # all messages which are text messages (have the text attribute)
+            >>>     assert isinstance(update, Update)
             >>>     assert isinstance(msg, Message)
             >>>     app.bot.send_message(msg.chat.id, "you sent text!")
 
             >>> @app.on_message("photo", "sticker")
-            >>> def foo(msg):
+            >>> def foo(update, msg):
             >>>     # all messages which are photos (have the photo attribute) and have a caption
+            >>>     assert isinstance(update, Update)
             >>>     assert isinstance(msg, Message)
             >>>     app.bot.send_message(msg.chat.id, "you sent a photo with caption!")
 
@@ -340,8 +343,8 @@ class MessagesMixin(TeleflaskMixinBase):
                         if not required_fields or all([hasattr(msg, f) and getattr(msg, f) for f in required_fields]):
                             # either filters evaluates to False, (None, empty list etc) which means it should not filter
                             # or it has filters, than we need to check if that attributes really exist.
-                            self.process_result(update, listener(update.message))
-                            break  # required_fields in required_fields_array
+                            self.process_result(update, listener(update, update.message))
+                            break  # stop processing other required_fields combinations
                         # end if
                     except Exception:
                         logger.exception("Error executing the update listener {func}.".format(func=listener))

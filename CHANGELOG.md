@@ -24,6 +24,7 @@
     - all
         - any list/dict used for storage is now defined in the `__init__` method, so that it won't be global part of the class any longer.
         - decorators where you can specify required params can now be used multible times to allow different fields to trigger the same function.
+        - all listeners which depend on incomming `update`s will now always have the `update` as first parameter.
 
     - `StartupMixin`
         - Added `__init__` method to `StartupMixin`, else the lists were static.
@@ -38,6 +39,8 @@
         - Added unit tests for `UpdatesMixin`.
     - `MessagesMixin`
         - Fixed `@on_message` did not return the (new) function.
+        - `@on_message` will now really provide the `update` as fist argument.
+            This is now conform to all other listeners, and a part of already existing documentation.
 
 - Fixes in `messages`:
     - Let `MessageWithReplies` also return the results.
