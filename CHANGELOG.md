@@ -23,6 +23,7 @@
 - Mixin overhaul
     - all
         - any list/dict used for storage is now defined in the `__init__` method, so that it won't be global part of the class any longer.
+        - decorators where you can specify required params can now be used multible times to allow different fields to trigger the same function.
 
     - `StartupMixin`
         - Added `__init__` method to `StartupMixin`, else the lists were static.
