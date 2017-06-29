@@ -35,6 +35,8 @@
         - Changed `add_update_listener` to merge keywords.
             - this is relevant for `@on_update`, too.
         - Added unit tests for `UpdatesMixin`.
+    - `MessagesMixin`
+        - Fixed `@on_message` did not return the (new) function.
 
 - Fixes in `messages`:
     - Let `MessageWithReplies` also return the results.
