@@ -240,7 +240,7 @@ class MessagesMixin(TeleflaskMixinBase):
         :params required_keywords: Optionally: Specify attribute the message needs to have.
         """
         def on_message_inner(function):
-            self.add_message_listener(function, required_keywords=required_keywords)
+            return self.add_message_listener(function, required_keywords=required_keywords)
         # end def
 
         if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
@@ -593,8 +593,7 @@ class StartupMixin(TeleflaskMixinBase):
             >>>     print("doing stuff on boot")
 
         """
-        self.add_startup_listener(func)
-        return func
+        return self.add_startup_listener(func)
     # end def
 
     def add_startup_listener(self, func):
