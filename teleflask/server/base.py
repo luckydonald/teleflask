@@ -111,9 +111,14 @@ class TeleflaskBase(TeleflaskMixinBase):
         if not self.bot:  # so you can manually set it before calling `init_app(...)`,
             # e.g. a mocking bot class for unit tests
             self.bot = Bot(self.__api_key, return_python_objects=self._return_python_objects)
+        elif self.bot.return_python_objects != self._return_python_objects:
+            # we don't have the same setting as the given one
+            raise ValueError("The already set bot has return_python_objects {given}, but we have {our}".format(
+                given=self.bot.return_python_objects, our=self._return_python_objects
+            ))
         # end def
         myself = self.bot.get_me()
-        if self._return_python_objects:
+        if self.bot.return_python_objects:
             self._user_id = myself.id
             self._username = myself.username
         else:
