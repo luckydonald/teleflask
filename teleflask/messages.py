@@ -287,7 +287,6 @@ class DocumentMessage(Message):
         self.disable_notification = disable_notification
     # end def __init__
 
-
     def prepare_file(self):
         """
         This sets `self.file` to a fitting :class:`InputFile`
@@ -305,9 +304,10 @@ class DocumentMessage(Message):
                 url = urlparse(self.file_url)
                 file_name = os.path.basename(url.path)
                 file_name, file_suffix = os.path.splitext(file_name)
-            elif self.file_mime:
+            # end if
+            if self.file_mime:
                 import mimetypes
-                file_suffix = mimetypes.guess_extension("image/jpeg")
+                file_suffix = mimetypes.guess_extension(self.file_mime)
                 file_suffix = '.jpg' if file_suffix == '.jpe' else file_suffix  # .jpe -> .jpg
             # end if
             if not file_suffix or not file_suffix.strip().lstrip("."):
@@ -377,7 +377,7 @@ class PhotoMessage(DocumentMessage):
                 import mimetypes
                 ext = mimetypes.guess_extension(self.file.file_mime)  # automatically
                 if ext not in [".jpg", ".jpeg", ".gif", ".png", ".tif", ".bmp"]:
-                    ext = ".unknown-file-4458.png"  # At least we can try setting it as .png
+                    ext = ".unknown-file-type.png"  # At least we can try setting it as .png
                 self.file.file_name += ext
         try:
             return sender.send_photo(
