@@ -45,6 +45,8 @@
 - Fixes in `messages`:
     - Let `MessageWithReplies` also return the results.
     - Allow `TypingMessage` to use the `TypingMessage.CANCEL`.
+    - Fixed `DocumentMessage` to respect the set `file_mime`, and in case of given `file_content`, use the filename part from either the `file_path` or the `file_url`.
+    - Also unknown `PhotoMessage`s will now have a `*.unknown-file-type.png` suffix.
 
 - specified minimum versions for some dependencies
     - `pytgbot>=2.3.3` (for the new webhooks)

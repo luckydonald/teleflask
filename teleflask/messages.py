@@ -244,9 +244,12 @@ class DocumentMessage(Message):
     def __init__(self, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         """
+        You can specify a `file_url` to download it. It will get mime and filename from there.
         You can specify a `file_path` to load it from disk. It will get mime and filename from there.
         You can specify a `file_content` and a `file_path`. It will use the mime from the content, and get the filename part from the path.
         You can specify a `file_content` and a `file_url`.  It will use the mime from the content, and get the filename part from the url.
+        You can specify a `file_content`, the `file_mime` and a `file_path`. It will use the mime from as in `file_mime`, and get the filename part from the path.
+        You can specify a `file_content`, the `file_mime` and a `file_url`.  It will use the mime from as in `file_mime`, and get the filename part from the url.
 
 
         :param file_path:
