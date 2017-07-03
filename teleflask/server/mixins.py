@@ -520,7 +520,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
             if txt in self.commands:
                 logger.debug("Running command {input} (no text).".format(input=txt))
                 func, exclusive = self.commands[txt]
-                self._execute_command(self.commands[txt], update, txt, None)
+                self._execute_command(func, update, txt, None)
             elif " " in txt and txt.split(" ")[0] in self.commands:
                 cmd, text = tuple(txt.split(" ", maxsplit=1))
                 logger.debug("Running command {cmd} (text={input!r}).".format(cmd=cmd, input=txt))
