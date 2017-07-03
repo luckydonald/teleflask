@@ -546,6 +546,15 @@ class TeleflaskBase(TeleflaskMixinBase):
         if update.message and update.message.chat.id and update.message.message_id:
             reply_to, reply_id = update.message.chat.id, update.message.message_id
         # end if
+        if update.channel_post and update.channel_post.chat.id and update.channel_post.message_id:
+            reply_to, reply_id = update.channel_post.chat.id, update.channel_post.message_id
+        # end if
+        if update.edited_message and update.edited_message.chat.id and update.edited_message.message_id:
+            reply_to, reply_id = update.edited_message.chat.id, update.edited_message.message_id
+        # end if
+        if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
+            reply_to, reply_id = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
+        # end if
         if isinstance(result, (Message, str, list, tuple)):
             self.send_message(result, reply_to, reply_id)
         elif result is False or result is None:
