@@ -314,6 +314,7 @@ class DocumentMessage(Message):
                 file_suffix = '.jpg' if file_suffix == '.jpe' else file_suffix  # .jpe -> .jpg
             # end if
             if not file_suffix or not file_suffix.strip().lstrip("."):
+                logger.debug("file_suffix was empty. Using '.blob'")
                 file_suffix = ".blob"
             # end if
             file_name = "{filename}{suffix}".format(filename=file_name, suffix=file_suffix)
