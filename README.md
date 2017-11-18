@@ -1,6 +1,6 @@
 # teleflask
 A python telegram bot framework based on flask and pytgbot    
-Version 0.0.8
+Version 1.0.0
 
 
 ## Usage
@@ -22,6 +22,7 @@ bot = Teleflask(API_KEY)
 bot.init_app(app)
 ```
 
+`app` being your flask app.
 
 ### Usage
 ```python
