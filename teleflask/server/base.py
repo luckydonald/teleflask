@@ -556,7 +556,7 @@ class TeleflaskBase(TeleflaskMixinBase):
             reply_to, reply_id = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
         # end if
         if isinstance(result, (Message, str, list, tuple)):
-            self.send_message(result, reply_to, reply_id)
+            return self.send_message(result, reply_to, reply_id)
         elif result is False or result is None:
             logger.debug("Ignored result {res!r}".format(res=result))
             # ignore it
@@ -604,7 +604,7 @@ class TeleflaskBase(TeleflaskMixinBase):
             #     msg._next_msg = None
             from requests.exceptions import RequestException
             try:
-                msg.send(self.bot, reply_to, reply_id)
+                return msg.send(self.bot, reply_to, reply_id)
             except (TgApiException, RequestException):
                 logger.exception("Manager failed messages. Message was {msg!s}".format(msg=msg))
             # end try
