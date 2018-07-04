@@ -5,6 +5,7 @@
     - To keep backwards compatibility, there is still `bot.send_message` keeping the old behaviour, looping through the new function, and discarding the results.
 - Now `bot.process_result(...)` will return the results of `bot.send_messages(...)` (of the `Message.send(...)`s) as list,
   so you can call the `process_result(...)` function directly with any `Message` and use the telegram responses right away.
+- Fixed automatic replying to work with messages with `callback_query`.
 
 
 ## v1.0.0

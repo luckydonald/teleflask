@@ -559,12 +559,13 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         Builds the `reply_id` (chat id) and `reply_to` (message id) values needed for `Message.send(...)` from an telegram `pytgbot` `Update` instance.
 
-        :param update: pytgbot.api_types.receivable.updates.
+        :param update: pytgbot.api_types.receivable.updates.Update
         :return: reply_id, reply_to
         :rtype: tuple(int,int)
         """
         from pytgbot.api_types.receivable.updates import Update
         assert_type_or_raise(update, Update, parameter_name="update")
+        assert isinstance(update, Update)
 
         reply_to, reply_id = None, None
         if update.message and update.message.chat.id and update.message.message_id:
@@ -578,6 +579,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         # end if
         if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
             reply_to, reply_id = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
+        # end if
+        if update.callback_query and update.callback_query.message and update.callback_query.message.chat and update.callback_query.message.chat.id and update.callback_query.message.message_id:
+            reply_id, reply_to = update.callback_query.message.message_id, update.callback_query.message.chat.id
         # end if
         return reply_id, reply_to
     # end def
