@@ -1,6 +1,10 @@
 # teleflask
-A python telegram bot framework based on flask and pytgbot    
-Version 1.0.0
+###### Version 1.0.1
+
+A python telegram bot framework based on flask and pytgbot
+Tested to work on python 3. Might work on python 2.
+
+
 
 
 ## Usage
@@ -104,6 +108,16 @@ It will first check for registered commands (`@command`),
 next for messages listeners (`@on_message`) and
 finally for update listeners (`@on_update`).
 
+### Running bot commands
+
+The normal `pytgbot`'s bot is available as `.bot` in your `Teleflask` instance:
+
+```python
+from teleflask import Teleflask
+
+bot = Teleflask(API_KEY, app)
+bot.bot.send_message('@luckydonald', 'It works :D')  # please don't spam me :D
+```
 
 
 

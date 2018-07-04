@@ -1,5 +1,7 @@
 # Changelog
-## v1.0.1 (not released yet)
+## v1.0.1 - 2018-07-04
+> (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
+
 - renamed `bot.send_message(...)` to `bot.send_message(...)`, and yield the results.
     - this means you need to iterate over it, to send all the messages.
     - To keep backwards compatibility, there is still `bot.send_message` keeping the old behaviour, looping through the new function, and discarding the results.
@@ -8,7 +10,7 @@
 - Fixed automatic replying to work with messages with `callback_query`.
 
 
-## v1.0.0
+## v1.0.0 - 2017-11-17
 - Not any longer subclasses `flask.Flask`. This was ugly, and bad.
     Now you initialize it like this:
     ```python    
