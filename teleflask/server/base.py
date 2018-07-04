@@ -5,6 +5,7 @@ from pytgbot import Bot
 from pytgbot.api_types import TgBotApiObject
 from pytgbot.exceptions import TgApiServerException
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.exceptions import assert_type_or_raise
 
 from .. import VERSION
 from .utilities import _class_self_decorate
@@ -542,6 +543,29 @@ class TeleflaskBase(TeleflaskMixinBase):
         :return:
         """
         from ..messages import Message
+        reply_id, reply_to = self.msg_get_reply_params(update)
+        if isinstance(result, (Message, str, list, tuple)):
+            return list(self.send_messages(result, reply_to, reply_id))
+        elif result is False or result is None:
+            logger.debug("Ignored result {res!r}".format(res=result))
+            # ignore it
+        else:
+            logger.warn("Unexpected plugin result: {type}".format(type=type(result)))
+        # end if
+    # end def
+
+    @staticmethod
+    def msg_get_reply_params(update):
+        """
+        Builds the `reply_id` (chat id) and `reply_to` (message id) values needed for `Message.send(...)` from an telegram `pytgbot` `Update` instance.
+
+        :param update: pytgbot.api_types.receivable.updates.
+        :return: reply_id, reply_to
+        :rtype: tuple(int,int)
+        """
+        from pytgbot.api_types.receivable.updates import Update
+        assert_type_or_raise(update, Update, parameter_name="update")
+
         reply_to, reply_id = None, None
         if update.message and update.message.chat.id and update.message.message_id:
             reply_to, reply_id = update.message.chat.id, update.message.message_id
@@ -555,24 +579,21 @@ class TeleflaskBase(TeleflaskMixinBase):
         if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
             reply_to, reply_id = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
         # end if
-        if isinstance(result, (Message, str, list, tuple)):
-            return self.send_message(result, reply_to, reply_id)
-        elif result is False or result is None:
-            logger.debug("Ignored result {res!r}".format(res=result))
-            # ignore it
-        else:
-            logger.warn("Unexpected plugin result: {type}".format(type=type(result)))
-        # end if
+        return reply_id, reply_to
     # end def
 
-    def send_message(self, message, reply_to, reply_id):
+    def send_messages(self, messages, reply_to, reply_id):
         """
         Sends a Message.
         Plain strings will become an unformatted TextMessage.
         Supports to mass send lists, tuples, Iterable.
 
-        :param message: A Message object.
-        :type  message: Message | str | list | tuple |
+        :param messages: A Message object.
+        :type  messages: Message | str | list | tuple |
+        :param reply_id: chat id
+        :type  reply_id: int
+        :param reply_to: message id
+        :type  reply_to: int
         :param instant: Send without waiting for the plugin's function to be done. True to send as soon as possible.
         False or None to wait until the plugin's function is done and has returned, messages the answers in a bulk.
         :type  instant: bool or None
@@ -580,20 +601,20 @@ class TeleflaskBase(TeleflaskMixinBase):
         from pytgbot.exceptions import TgApiException
         from ..messages import Message, TextMessage
 
-        logger.debug("Got {}".format(message))
-        if not isinstance(message, (Message, str, list, tuple)):
+        logger.debug("Got {}".format(messages))
+        if not isinstance(messages, (Message, str, list, tuple)):
             raise TypeError("Is not a Message type (or str or tuple/list).")
         # end if
-        if isinstance(message, tuple):
-            message = [x for x in message]
+        if isinstance(messages, tuple):
+            messages = [x for x in messages]
         # end if
-        if not isinstance(message, list):
-            message = [message]
+        if not isinstance(messages, list):
+            messages = [messages]
         # end if
-        assert isinstance(message, list)
-        for msg in message:
+        assert isinstance(messages, list)
+        for msg in messages:
             if isinstance(msg, str):
-                assert not isinstance(message, str)  # because we would split a string to pieces.
+                assert not isinstance(messages, str)  # because we would split a string to pieces.
                 msg = TextMessage(msg, parse_mode="text")
             # end if
             if not isinstance(msg, Message):
@@ -604,10 +625,22 @@ class TeleflaskBase(TeleflaskMixinBase):
             #     msg._next_msg = None
             from requests.exceptions import RequestException
             try:
-                return msg.send(self.bot, reply_to, reply_id)
+                yield msg.send(self.bot, reply_to, reply_id)
             except (TgApiException, RequestException):
                 logger.exception("Manager failed messages. Message was {msg!s}".format(msg=msg))
             # end try
         # end for
     # end def
+
+    def send_message(self, messages, reply_to, reply_id):
+        """
+        Backwards compatible version of send_messages.
+
+        :param messages:
+        :param reply_to: The message
+        :param reply_id:
+        :return: None
+        """
+        list(self.send_messages(messages, reply_to, reply_id))
+        return None
 # end class

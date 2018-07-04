@@ -1,4 +1,12 @@
 # Changelog
+## v1.0.1 (not released yet)
+- renamed `bot.send_message(...)` to `bot.send_message(...)`, and yield the results.
+    - this means you need to iterate over it, to send all the messages.
+    - To keep backwards compatibility, there is still `bot.send_message` keeping the old behaviour, looping through the new function, and discarding the results.
+- Now `bot.process_result(...)` will return the results of `bot.send_messages(...)` (of the `Message.send(...)`s) as list,
+  so you can call the `process_result(...)` function directly with any `Message` and use the telegram responses right away.
+
+
 ## v1.0.0
 - Not any longer subclasses `flask.Flask`. This was ugly, and bad.
     Now you initialize it like this:
