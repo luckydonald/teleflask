@@ -632,7 +632,7 @@ class TeleflaskBase(TeleflaskMixinBase):
             #     msg._next_msg = None
             from requests.exceptions import RequestException
             try:
-                yield msg.send(self.bot, reply_msg, reply_chat)
+                yield msg.send(self.bot, receiver=reply_chat, reply_id=reply_msg)
             except (TgApiException, RequestException):
                 logger.exception("Manager failed messages. Message was {msg!s}".format(msg=msg))
             # end try
