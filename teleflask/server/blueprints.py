@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-from collections import OrderedDict
 from functools import update_wrapper  # should be installed by flask
 
 from luckydonaldUtils.logger import logging
 
-from server.base import TeleflaskBase
-from server.mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
-from teleflask import Teleflask
+from .base import TeleflaskBase
+# from .mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)

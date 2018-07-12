@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from pytgbot.api_types.receivable.updates import Update
 
-from .base import TeleflaskMixinBase, TeleflaskBase
+from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
