@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from pytgbot.api_types.receivable.updates import Update
 
-from .base import TeleflaskMixinBase
+from .base import TeleflaskMixinBase, TeleflaskBase
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
@@ -667,3 +667,42 @@ class StartupMixin(TeleflaskMixinBase):
     # end if
 # end class
 
+
+class RegisterBlueprintsMixin(TeleflaskMixinBase):
+    def __init__(self, *args, **kwargs) -> None:
+        #: all the attached blueprints in a dictionary by name.  Blueprints
+        #: can be attached multiple times so this dictionary does not tell
+        #: you how often they got attached.
+        #:
+        #: .. versionadded:: 2.0.0
+        self.blueprints = {}
+        self._blueprint_order = []
+        super().__init__(*args, **kwargs)
+    # end def
+
+    def register_tblueprint(self, tblueprint, **options):
+        """Registers a `TBlueprint` on the application.
+
+        .. versionadded:: 2.0.0
+        """
+        first_registration = False
+        if tblueprint.name in self.blueprints:
+            assert self.blueprints[tblueprint.name] is tblueprint, \
+                'A teleflask blueprint\'s name collision occurred between %r and ' \
+                '%r.  Both share the same name "%s".  TBlueprints that ' \
+                'are created on the fly need unique names.' % \
+                (tblueprint, self.blueprints[tblueprint.name], tblueprint.name)
+        else:
+            self.blueprints[tblueprint.name] = tblueprint
+            self._blueprint_order.append(tblueprint)
+            first_registration = True
+        tblueprint.register(self, options, first_registration)
+
+    def iter_blueprints(self):
+        """Iterates over all blueprints by the order they were registered.
+
+        .. versionadded:: 0.11
+        """
+        return iter(self._blueprint_order)
+    # end def
+# end class

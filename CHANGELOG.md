@@ -15,6 +15,29 @@ Also
 - Removed deprecated `TeleflaskComplete` class which is just the old name for the `Teleflask` class.
     Use `Teleflask` instead.
 
+And added blueprint mechanics:
+
+```python
+# main.py
+from teleflask import Teleflask
+from somefile import part
+
+bot = Teleflask(API_KEY, app)
+bot.register_blueprint(part)
+```
+
+```python
+# part.py
+from teleflask import TBlueprint
+
+part = TBlueprint('some name')
+
+@part.command('test')
+def foobar(update, msg):
+    return "A message like ususal."
+# end def
+```
+
 ## v1.0.1 - 2018-07-04
 > (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
 
