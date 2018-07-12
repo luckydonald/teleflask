@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .extras import TeleflaskCommands, TeleflaskMessages, TeleflaskStartup, TeleflaskUpdates, Teleflask, TeleflaskComplete
+from .extras import Teleflask
 
 __author__ = 'luckydonald'
 
