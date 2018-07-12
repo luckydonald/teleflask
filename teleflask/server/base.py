@@ -543,9 +543,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         :return:
         """
         from ..messages import Message
-        reply_id, reply_to = self.msg_get_reply_params(update)
+        reply_chat, reply_msg = self.msg_get_reply_params(update)
         if isinstance(result, (Message, str, list, tuple)):
-            return list(self.send_messages(result, reply_to, reply_id))
+            return list(self.send_messages(result, reply_chat, reply_msg))
         elif result is False or result is None:
             logger.debug("Ignored result {res!r}".format(res=result))
             # ignore it
@@ -557,36 +557,36 @@ class TeleflaskBase(TeleflaskMixinBase):
     @staticmethod
     def msg_get_reply_params(update):
         """
-        Builds the `reply_id` (chat id) and `reply_to` (message id) values needed for `Message.send(...)` from an telegram `pytgbot` `Update` instance.
+        Builds the `reply_chat` (chat id) and `reply_msg` (message id) values needed for `Message.send(...)` from an telegram `pytgbot` `Update` instance.
 
         :param update: pytgbot.api_types.receivable.updates.Update
-        :return: reply_id, reply_to
+        :return: reply_chat, reply_msg
         :rtype: tuple(int,int)
         """
         from pytgbot.api_types.receivable.updates import Update
         assert_type_or_raise(update, Update, parameter_name="update")
         assert isinstance(update, Update)
 
-        reply_to, reply_id = None, None
+        reply_chat, reply_msg = None, None
         if update.message and update.message.chat.id and update.message.message_id:
-            reply_to, reply_id = update.message.chat.id, update.message.message_id
+            reply_chat, reply_msg = update.message.chat.id, update.message.message_id
         # end if
         if update.channel_post and update.channel_post.chat.id and update.channel_post.message_id:
-            reply_to, reply_id = update.channel_post.chat.id, update.channel_post.message_id
+            reply_chat, reply_msg = update.channel_post.chat.id, update.channel_post.message_id
         # end if
         if update.edited_message and update.edited_message.chat.id and update.edited_message.message_id:
-            reply_to, reply_id = update.edited_message.chat.id, update.edited_message.message_id
+            reply_chat, reply_msg = update.edited_message.chat.id, update.edited_message.message_id
         # end if
         if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
-            reply_to, reply_id = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
+            reply_chat, reply_msg = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
         # end if
         if update.callback_query and update.callback_query.message and update.callback_query.message.chat and update.callback_query.message.chat.id and update.callback_query.message.message_id:
-            reply_id, reply_to = update.callback_query.message.message_id, update.callback_query.message.chat.id
+            reply_chat, reply_msg = update.callback_query.message.chat.id, update.callback_query.message.message_id
         # end if
-        return reply_id, reply_to
+        return reply_chat, reply_msg
     # end def
 
-    def send_messages(self, messages, reply_to, reply_id):
+    def send_messages(self, messages, reply_chat, reply_msg):
         """
         Sends a Message.
         Plain strings will become an unformatted TextMessage.
@@ -594,10 +594,10 @@ class TeleflaskBase(TeleflaskMixinBase):
 
         :param messages: A Message object.
         :type  messages: Message | str | list | tuple |
-        :param reply_id: chat id
-        :type  reply_id: int
-        :param reply_to: message id
-        :type  reply_to: int
+        :param reply_chat: chat id
+        :type  reply_chat: int
+        :param reply_msg: message id
+        :type  reply_msg: int
         :param instant: Send without waiting for the plugin's function to be done. True to send as soon as possible.
         False or None to wait until the plugin's function is done and has returned, messages the answers in a bulk.
         :type  instant: bool or None
@@ -629,22 +629,24 @@ class TeleflaskBase(TeleflaskMixinBase):
             #     msg._next_msg = None
             from requests.exceptions import RequestException
             try:
-                yield msg.send(self.bot, reply_to, reply_id)
+                yield msg.send(self.bot, reply_msg, reply_chat)
             except (TgApiException, RequestException):
                 logger.exception("Manager failed messages. Message was {msg!s}".format(msg=msg))
             # end try
         # end for
     # end def
 
-    def send_message(self, messages, reply_to, reply_id):
+    def send_message(self, messages, reply_chat, reply_msg):
         """
         Backwards compatible version of send_messages.
 
         :param messages:
-        :param reply_to: The message
-        :param reply_id:
+        :param reply_chat: chat id
+        :type  reply_chat: int
+        :param reply_msg: message id
+        :type  reply_msg: int
         :return: None
         """
-        list(self.send_messages(messages, reply_to, reply_id))
+        list(self.send_messages(messages, reply_chat, reply_msg))
         return None
 # end class

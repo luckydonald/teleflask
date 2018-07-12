@@ -1,4 +1,13 @@
 # Changelog
+## v2.0.0 - ~~2018-07-12~~ (not released yet)
+- renamed `reply_id` to `reply_msg` and `reply_to` to `reply_chat` and
+- switched order to `reply_chat, reply_msg` (chat now first).
+
+This affects:
+
+- parameters of `bot.send_message`, `bot.send_messages`
+- returned values from `bot.msg_get_reply_params`
+
 ## v1.0.1 - 2018-07-04
 > (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
 
