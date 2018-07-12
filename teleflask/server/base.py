@@ -567,23 +567,22 @@ class TeleflaskBase(TeleflaskMixinBase):
         assert_type_or_raise(update, Update, parameter_name="update")
         assert isinstance(update, Update)
 
-        reply_chat, reply_msg = None, None
         if update.message and update.message.chat.id and update.message.message_id:
-            reply_chat, reply_msg = update.message.chat.id, update.message.message_id
+            return update.message.chat.id, update.message.message_id
         # end if
         if update.channel_post and update.channel_post.chat.id and update.channel_post.message_id:
-            reply_chat, reply_msg = update.channel_post.chat.id, update.channel_post.message_id
+            return update.channel_post.chat.id, update.channel_post.message_id
         # end if
         if update.edited_message and update.edited_message.chat.id and update.edited_message.message_id:
-            reply_chat, reply_msg = update.edited_message.chat.id, update.edited_message.message_id
+            return update.edited_message.chat.id, update.edited_message.message_id
         # end if
         if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
-            reply_chat, reply_msg = update.edited_channel_post.chat.id, update.edited_channel_post.message_id
+            return update.edited_channel_post.chat.id, update.edited_channel_post.message_id
         # end if
         if update.callback_query and update.callback_query.message and update.callback_query.message.chat and update.callback_query.message.chat.id and update.callback_query.message.message_id:
-            reply_chat, reply_msg = update.callback_query.message.chat.id, update.callback_query.message.message_id
+            return update.callback_query.message.chat.id, update.callback_query.message.message_id
         # end if
-        return reply_chat, reply_msg
+        return None, None
     # end def
 
     def send_messages(self, messages, reply_chat, reply_msg):
