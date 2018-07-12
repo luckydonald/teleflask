@@ -49,13 +49,3 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Tel
     """
     pass
 # end class
-
-
-class TeleflaskComplete(Teleflask):
-    def __init__(self, *args, **kwargs):
-        import warnings
-        warnings.warn('Warning: TeleflaskComplete is deprecated. Please use the Teleflask class.',
-                      DeprecationWarning)
-        super().__init__(*args, **kwargs)
-    # end def
-# end class

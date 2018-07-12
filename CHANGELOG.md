@@ -10,8 +10,10 @@ This affects:
 
 Also
 
-- Removed class mixes: `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates`, `TeleflaskStartup`.
-    They were never used anyway. Either recreate them on your own, or use the `Teleflask` class.
+- Removed class mixes: `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates`, `TeleflaskStartup`. They were never used anyway.
+    Either recreate them on your own, or use the `Teleflask` class.
+- Removed deprecated `TeleflaskComplete` class which is just the old name for the `Teleflask` class.
+    Use `Teleflask` instead.
 
 ## v1.0.1 - 2018-07-04
 > (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
