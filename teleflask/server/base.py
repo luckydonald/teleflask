@@ -90,8 +90,8 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         self.__api_key = api_key
         self.bot = None  # will be set in self.init_bot()
-        self.update_listener = list()
-        self.commands = dict()
+        self.app = None  # will be filled out by self.init_app(...)
+        self.blueprint = None  # will be filled out by self.init_app(...)
         self._return_python_objects = return_python_objects
         self._webhook_url = None  # will be filled out by self.calculate_webhook_url() in self.init_app(...)
         self.hostname = hostname  # e.g. "example.com:443"
@@ -101,6 +101,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         if app or blueprint:
             self.init_app(app, blueprint=blueprint, debug_routes=debug_routes)
         # end if
+
+        self.update_listener = list()
+        self.commands = dict()
     # end def
 
     def init_bot(self):
@@ -140,6 +143,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         
         :param blueprint: A blueprint, where the telegram webhook (and the debug endpoints, see `debug_routes`) will be registered in.
                           If `None` was provided, it will register any routes to the `app` itself.
+                          Note: this is NOT a `TBlueprint`, but a regular `flask` one!
         :type  blueprint: flask.Blueprint | None
 
         :param debug_routes: Add extra url endpoints, useful for debugging. See setup_routes(...)
