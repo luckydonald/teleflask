@@ -8,6 +8,11 @@ This affects:
 - parameters of `bot.send_message`, `bot.send_messages`
 - returned values from `bot.msg_get_reply_params`
 
+Also
+
+- Removed class mixes: `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates`, `TeleflaskStartup`.
+    They were never used anyway. Either recreate them on your own, or use the `Teleflask` class.
+
 ## v1.0.1 - 2018-07-04
 > (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
 
