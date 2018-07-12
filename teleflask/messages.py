@@ -200,7 +200,7 @@ class MessageWithReplies(Message):
                 reply_messages.extend(child_msg)
                 continue
             assert_instance(child_msg, Message)
-            result = child_msg.send(sender, receiver, reply_id)
+            result = child_msg.send(sender, receiver=receiver, reply_id=reply_id)
             reply_results.append(result)
         # end for
         return reply_results

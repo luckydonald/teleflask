@@ -650,6 +650,6 @@ class TeleflaskBase(TeleflaskMixinBase):
         :type  reply_msg: int
         :return: None
         """
-        list(self.send_messages(messages, reply_chat, reply_msg))
+        list(self.send_messages(messages, reply_chat=reply_chat, reply_msg=reply_msg))
         return None
 # end class
