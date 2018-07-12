@@ -56,7 +56,7 @@ class UpdatesMixin(TeleflaskMixinBase):
         def on_update_inner(function):
             return self.add_update_listener(function, required_keywords=required_keywords)
         # end def
-        if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
+        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
             not isinstance(required_keywords[0], str)  # not string -> must be function
              ):
             # @on_update
@@ -246,7 +246,7 @@ class MessagesMixin(TeleflaskMixinBase):
             return self.add_message_listener(function, required_keywords=required_keywords)
         # end def
 
-        if (len(required_keywords)==1 and  # given could be the function, or a single required_keyword.
+        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
             not isinstance(required_keywords[0], str) # not string -> must be function
              ):
             # @on_message

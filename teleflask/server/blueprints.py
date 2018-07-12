@@ -51,17 +51,12 @@ class TBlueprint(object):
         """Called by :meth:`Flask.register_tblueprint` to register a blueprint
         on the application.  This can be overridden to customize the register
         behavior.  Keyword arguments from
-        :func:`~flask.Flask.register_tblueprint` are directly forwarded to this
+        :func:`~teleflask.Teleflask.register_blueprint` are directly forwarded to this
         method in the `options` dictionary.
         """
         self._got_registered_once = True
         self._teleflask = teleflask
         state = self.make_setup_state(teleflask, options, first_registration)
-        #if self.has_static_folder:
-        #    state.add_url_rule(self.static_url_path + '/<path:filename>',
-        #                       view_func=self.send_static_file,
-        #                       endpoint='static')
-
         for deferred in self.deferred_functions:
             deferred(state)
         # end for
@@ -119,6 +114,12 @@ class TBlueprint(object):
             lambda state: state.teleflask.remove_startup_listener(func)
         )
         return func
+
+    def on_startup(self, func):
+        """
+        Like `StartupMixin.on_startup`, but for this `Blueprint`.
+        """
+        return self.add_startup_listener(func)
     # end def
 
     def add_command(self, command, function, exclusive=False):
@@ -137,6 +138,22 @@ class TBlueprint(object):
         self.record(
             lambda state: state.teleflask.remove_command(command, function)
         )
+
+    def on_command(self, command, exclusive=False):
+        """
+        Like `BotCommandsMixin.on_command`, but for this `Blueprint`.
+        """
+        return self.command(command, exclusive=exclusive)
+    # end def
+
+    def command(self, command, exclusive=False):
+        """
+        Like `BotCommandsMixin.command`, but for this `Blueprint`.
+        """
+        def register_command(func):
+            self.add_command(command, func, exclusive=exclusive)
+            return func
+        return register_command
     # end def
 
     def add_message_listener(self, function, required_keywords=None):
@@ -156,6 +173,27 @@ class TBlueprint(object):
             lambda state: state.teleflask.remove_message_listeners(func)
         )
 
+    def on_message(self, *required_keywords):
+        """
+        Like `MessagesMixin.on_message`, but for this `Blueprint`.
+        """
+        def on_message_inner(function):
+            return self.add_message_listener(function, required_keywords=required_keywords)
+        # end def
+
+        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str) # not string -> must be function
+             ):
+            # @on_message
+            function = required_keywords[0]
+            required_keywords = None
+            return on_message_inner(function=function)  # not string -> must be function
+        # end if
+        # -> else: *required_keywords are the strings
+        # @on_message("text", "sticker", "whatever")
+        return on_message_inner  # let that function be called again with the function.
+    # end def
+
     def add_update_listener(self, function, required_keywords=None):
         """
         Like `UpdatesMixin.add_update_listener`, but for this `Blueprint`.
@@ -172,8 +210,24 @@ class TBlueprint(object):
         self.record(
             lambda state: state.teleflask.remove_update_listener(func)
         )
+
+    def on_update(self, *required_keywords):
+        def on_update_inner(function):
+            return self.add_update_listener(function, required_keywords=required_keywords)
+        # end def
+        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str)  # not string -> must be function
+             ):
+            # @on_update
+            function = required_keywords[0]
+            required_keywords = None
+            return on_update_inner(function)  # not string -> must be function
+        # end if
+        # -> else: *required_keywords are the strings
+        # @on_update("update_id", "message", "whatever")
+        return on_update_inner  # let that function be called again with the function.
     # end def
-    
+
     @property
     def teleflask(self):
         if not self._got_registered_once:
@@ -223,6 +277,8 @@ class TBlueprint(object):
         """
         return self.teleflask.send_messages(messages, reply_chat, reply_msg)
     # end def
+
+
 
 
 
