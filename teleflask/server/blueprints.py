@@ -17,12 +17,12 @@ class TBlueprintSetupState(object):
     to all register callback functions.
     """
 
-    def __init__(self, blueprint, app, options, first_registration):
+    def __init__(self, tblueprint, teleflask, options, first_registration):
         #: a reference to the current application
-        self.app = app
+        self.teleflask = teleflask
 
         #: a reference to the blueprint that created this setup state.
-        self.blueprint = blueprint
+        self.tblueprint = tblueprint
 
         #: a dictionary with all options that were passed to the
         #: :meth:`~flask.Flask.register_tblueprint` method.
@@ -66,7 +66,9 @@ class TBlueprint(object):
         object that is later passed to the register callback functions.
         Subclasses can override this to return a subclass of the setup state.
         """
-        return TBlueprintSetupState(self, teleflask, options, first_registration)
+        return TBlueprintSetupState(
+            tblueprint=self, teleflask=teleflask, options=options, first_registration=first_registration
+        )
     # end def
 
     def record(self, func):
