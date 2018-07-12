@@ -43,6 +43,7 @@ class TBlueprint(object):
     def __init__(self, name):
         self.name = name
         self.deferred_functions = []
+        self._got_registered_once = False
     # end def
 
     def register(self, teleflask, options, first_registration=False):
