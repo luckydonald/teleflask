@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from .base import TeleflaskBase
-from .mixins import StartupMixin, BotCommandsMixin, UpdatesMixin, MessagesMixin
+from .mixins import StartupMixin, BotCommandsMixin, UpdatesMixin, MessagesMixin, RegisterBlueprintsMixin
 
 __author__ = 'luckydonald'
 __all__ = ["Teleflask"]
 
 
-class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskBase):
+class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBase):
     """
     This is the full package, including all provided mixins.
 
