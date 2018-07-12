@@ -47,5 +47,44 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Tel
         :class:`teleflask.extras.TeleflaskCommands`, :class:`teleflask.extras.TeleflaskMessages`,
         :class:`teleflask.extras.TeleflaskUpdates` and :class:`teleflask.extras.TeleflaskStartup`.
     """
-    pass
+
+    def __init__(self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
+                 debug_routes=False, disable_setting_webhook=False, return_python_objects=True):
+        """
+        A new Teleflask object.
+
+        :param api_key: The key for the telegram bot api.
+        :type  api_key: str
+
+        :param app: The flask app if you don't like to call :meth:`init_app` yourself.
+        :type  app: flask.Flask | None
+
+        :param blueprint: A blueprint, where the telegram webhook (and the debug endpoints, see `debug_routes`) will be registered in.
+                          Use if you don't like to call :meth:`init_app` yourself.
+                          If not set, but `app` is, it will register any routes to the `app` itself.
+                          Note: This is NOT a `TBlueprint` but a regular `flask` one!
+        :type  blueprint: flask.Blueprint | None
+
+        :param hostname: The hostname or IP (and maybe a port) where this server is reachable in the internet.
+                         Specify the path with :param hostpath:
+                         Used to calculate the webhook url.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hostpath: The host url the base of where this bot is reachable.
+                         Examples: None (for root of server) or "/bot2"
+                         Note: The webhook will only be set on initialisation.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hookpath: The endpoint of the telegram webhook.
+                        Defaults to "/income/<API_KEY>"
+                        Note: The webhook will only be set on initialisation.
+                        Also configurable via environment variables. See calculate_webhook_url()
+        :param debug_routes: Add extra url endpoints usefull for debugging. See setup_routes(...)
+
+        :param disable_setting_webhook: Disable updating the webhook when starting. Useful for unit tests.
+
+        :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
+        """
+        super().__init__(api_key, app, blueprint, hostname, hostpath, hookpath, debug_routes, disable_setting_webhook,
+                         return_python_objects)
+
+    # end def
 # end class
