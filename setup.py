@@ -8,7 +8,7 @@ here = path.abspath(path.dirname(__file__))
 long_description = """A Python module that connects to the Telegram bot api, allowing to interact with Telegram users or groups."""
 
 setup(
-    name='teleflask', version="2.0.0.dev5",
+    name='teleflask', version="2.0.0.dev6",
     description='Easily create Telegram bots with pytgbot and flask. Webhooks made easy.',
     long_description=long_description,
     # The project's main homepage.
@@ -57,7 +57,7 @@ setup(
     install_requires=[
         "flask",  # have flask
         "pytgbot",  # connect to telegram
-        "DictObject", "luckydonald-utils",  # general utils
+        "DictObject", "luckydonald-utils>=0.57",  # general utils
         "python-magic", "backoff>=1.4.1",  # messages messages
         # backoff >=1.4.1 because of a bug with the flask development server
         # see https://github.com/litl/backoff/issues/30
