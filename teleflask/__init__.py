@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __author__ = 'luckydonald'
 
-VERSION = "2.0.0.dev4"
+VERSION = "2.0.0.dev5"
 __version__ = VERSION
 
 from .server import Teleflask
