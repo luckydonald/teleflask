@@ -4,6 +4,7 @@ import abc
 from pytgbot import Bot
 from pytgbot.api_types import TgBotApiObject
 from pytgbot.exceptions import TgApiServerException
+from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from luckydonaldUtils.logger import logging
 from luckydonaldUtils.exceptions import assert_type_or_raise
 
@@ -453,13 +454,12 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         from pprint import pformat
         from flask import request
-        from pytgbot.api_types.receivable.updates import Update
 
         logger.debug("INCOME:\n{}\n\nHEADER:\n{}".format(
             pformat(request.get_json()),
             request.headers if hasattr(request, "headers") else None
         ))
-        update = Update.from_array(request.get_json())
+        update = TGUpdate.from_array(request.get_json())
         try:
             result = self.process_update(update)
         except Exception as e:
@@ -542,9 +542,14 @@ class TeleflaskBase(TeleflaskMixinBase):
         It may be a :class:`Message` or a list of :class:`Message`s
         Strings will be send as :class:`TextMessage`, encoded as raw text.
         
-        :param manager:
-        :param result:
-        :return:
+        :param update: A telegram incoming update
+        :type  update: TGUpdate
+
+        :param result: Something to send.
+        :type  result: Union[List[Union[Message, str]], Message, str]
+
+        :return: List of telegram responses.
+        :rtype: list
         """
         from ..messages import Message
         reply_chat, reply_msg = self.msg_get_reply_params(update)
@@ -567,9 +572,8 @@ class TeleflaskBase(TeleflaskMixinBase):
         :return: reply_chat, reply_msg
         :rtype: tuple(int,int)
         """
-        from pytgbot.api_types.receivable.updates import Update
-        assert_type_or_raise(update, Update, parameter_name="update")
-        assert isinstance(update, Update)
+        assert_type_or_raise(update, TGUpdate, parameter_name="update")
+        assert isinstance(update, TGUpdate)
 
         if update.message and update.message.chat.id and update.message.message_id:
             return update.message.chat.id, update.message.message_id
