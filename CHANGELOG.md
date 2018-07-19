@@ -1,7 +1,7 @@
 # Changelog
 ## v2.0.0 - ~~2018-07-12~~ (not released yet)
-- renamed `reply_id` to `reply_msg` and `reply_to` to `reply_chat` and
-- switched order to `reply_chat, reply_msg` (chat now first).
+- **renamed** `reply_id` to `reply_msg` and `reply_to` to `reply_chat` and
+- **method signature change**: switched order to `reply_chat, reply_msg` (chat now first).
 
 This affects:
 
@@ -14,8 +14,11 @@ Also
     Either recreate them on your own, or use the `Teleflask` class.
 - Removed deprecated `TeleflaskComplete` class which is just the old name for the `Teleflask` class.
     Use `Teleflask` instead.
+- Added `inline_query` peer support to automatic replying.
+- Improved automatic replying to work on updates with `callback_query`.
+- Added new `GameMessage` as automatic reply type.
 
-And added blueprint mechanics:
+And added **blueprint** mechanics:
 
 ```python
 # main.py
@@ -38,6 +41,7 @@ def foobar(update, msg):
 # end def
 ```
 
+
 ## v1.0.1 - 2018-07-04
 > (In this examples `bot` being a `Teleflask` instance, not `pytgbot`'s bot. That would be `bot.bot`.)
 
@@ -46,8 +50,7 @@ def foobar(update, msg):
     - To keep backwards compatibility, there is still `bot.send_message` keeping the old behaviour, looping through the new function, and discarding the results.
 - Now `bot.process_result(...)` will return the results of `bot.send_messages(...)` (of the `Message.send(...)`s) as list,
   so you can call the `process_result(...)` function directly with any `Message` and use the telegram responses right away.
-- Fixed and improved automatic replying to work on updates with `callback_query`.
-- Added `inline_query` peer support to automatic replying.
+- Fixed automatic replying to work on updates with `callback_query`.
 
 
 ## v1.0.0 - 2017-11-17

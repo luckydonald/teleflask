@@ -7,8 +7,9 @@ import backoff
 import requests
 
 from DictObject import DictObject
+from luckydonaldUtils.encoding import unicode_type
 
-from luckydonaldUtils.exceptions import assert_or_raise as assert_instance
+from luckydonaldUtils.exceptions import assert_type_or_raise as assert_instance
 from luckydonaldUtils.text import text_split, cut_paragraphs, escape
 from luckydonaldUtils.files.mime import get_file_mime
 
@@ -502,6 +503,52 @@ class StickerMessage(FileIDMessage):
             reply_markup=self.reply_markup, disable_notification=self.disable_notification
         )
     # end def
+# end class
+
+
+class GameMessage(Message):
+    def __init__(self, game_short_name, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False):
+        """
+        :param game_short_name: Short name of the game, serves as the unique identifier for the game. Set up your games via Botfather.
+        :type  game_short_name: str|unicode
+
+        :param receiver:
+        :param reply_id:
+        :param reply_markup:
+        :param disable_notification:
+        """
+        assert_instance(game_short_name, unicode_type, parameter_name="game_short_name")
+        self.game_short_name = game_short_name
+        super().__init__(
+            receiver=receiver, reply_id=reply_id, reply_markup=reply_markup, disable_notification=disable_notification
+        )
+    # end def __init__
+
+    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    def send(self, sender: PytgbotApiBot, receiver, reply_id) -> PytgbotApiMessage:
+        """
+        :param sender: The default value
+        :param receiver: The default value
+        :param reply_id: The default value
+        :return:
+        """
+        if self.receiver:  # overwrite if we set something custom
+            receiver = self.receiver
+        # end if
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
+            reply_id = self.reply_id
+        # end if
+        try:
+            return sender.send_game(
+                receiver, self.game_short_name, disable_notification=self.disable_notification,
+                reply_to_message_id=reply_id, reply_markup=self.reply_markup
+            )
+        except TgApiServerException as e:
+            should_backoff(e)  # checks if it should raise an DoRetryException
+            raise  # else it just raises as usual
+        # end try
+    # end def send
 # end class
 
 
