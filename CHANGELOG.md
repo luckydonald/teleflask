@@ -1,14 +1,17 @@
 # Changelog
 ## v2.0.0 - ~~2018-07-12~~ (not released yet)
+
+#### ⚠️ Breaking changes:
+
 - **renamed** `reply_id` to `reply_msg` and `reply_to` to `reply_chat` and
 - **method signature change**: switched order to `reply_chat, reply_msg` (chat now first).
 
-This affects:
+##### This affects:
 
 - parameters of `bot.send_message`, `bot.send_messages`
 - returned values from `bot.msg_get_reply_params`
 
-Also
+#### Other changes
 
 - Removed class mixes: `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates`, `TeleflaskStartup`. They were never used anyway.
     Either recreate them on your own, or use the `Teleflask` class.
@@ -18,7 +21,7 @@ Also
 - Improved automatic replying to work on updates with `callback_query`.
 - Added new `GameMessage` as automatic reply type.
 
-And added **blueprint** mechanics:
+#### Added **blueprint** mechanics:
 
 ```python
 # main.py
