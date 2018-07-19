@@ -279,10 +279,21 @@ class TBlueprint(object):
         return self.teleflask.send_messages(messages, reply_chat, reply_msg)
     # end def
 
+    def process_result(self, update, result):
+        """
+        Send the result.
+        It may be a :class:`Message` or a list of :class:`Message`s
+        Strings will be send as :class:`TextMessage`, encoded as raw text.
 
+        :param update: A telegram incoming update
+        :type  update: TGUpdate
 
+        :param result: Something to send.
+        :type  result: Union[List[Union[Message, str]], Message, str]
 
-
-
-
-
+        :return: List of telegram responses.
+        :rtype: list
+        """
+        return self.teleflask.process_result(update, result)
+    # end def
+# end class
