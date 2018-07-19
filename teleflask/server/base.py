@@ -583,8 +583,17 @@ class TeleflaskBase(TeleflaskMixinBase):
         if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.message_id:
             return update.edited_channel_post.chat.id, update.edited_channel_post.message_id
         # end if
-        if update.callback_query and update.callback_query.message and update.callback_query.message.chat and update.callback_query.message.chat.id and update.callback_query.message.message_id:
-            return update.callback_query.message.chat.id, update.callback_query.message.message_id
+        if update.callback_query and update.callback_query.message:
+            message_id = update.callback_query.message.message_id if update.callback_query.message.message_id else None
+            if update.callback_query.message.chat and update.callback_query.message.chat.id:
+                return update.callback_query.message.chat.id, message_id
+            # end if
+            if update.callback_query.message.from_peer and update.callback_query.message.from_peer.id:
+                return update.callback_query.message.from_peer.id, message_id
+            # end if
+        # end if
+        if update.inline_query and update.inline_query.from_peer and update.inline_query.from_peer.id:
+            return update.inline_query.from_peer.id, None
         # end if
         return None, None
     # end def
