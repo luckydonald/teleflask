@@ -37,9 +37,10 @@ class TeleflaskMixinBase(metaclass=abc.ABCMeta):
     def do_startup(self):
         """
         This method is called on bot/server startup.
+        To be precise, `TeleflaskBase.init_app()` will call it when done.
 
-        Any Mixin implementing must call super().do_startup(update).
-        So catch exceptions in your mixin's code.
+        Any Mixin implementing **must** call `super().do_startup(update)`.
+        So catch any and all exceptions in your mixin's own code.
         :return:
         """
         return
@@ -137,7 +138,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         Gives us access to the flask app (and optionally provide a Blueprint),
         where we will add a routing endpoint for the telegram webhook.
         
-        Calls `self.init_bot()`.
+        Calls `self.init_bot()`, calculates and sets webhook routes, and finally runs `self.do_startup()`.
 
         :param app: the :class:`flask.Flask` app
         :type  app: flask.Flask
@@ -159,6 +160,8 @@ class TeleflaskBase(TeleflaskMixinBase):
         hookpath, self._webhook_url = self.calculate_webhook_url(hostname=self.hostname, hostpath=self.hostpath, hookpath=self.hookpath)
         self.setup_routes(hookpath=hookpath, debug_routes=debug_routes)
         self.set_webhook()  # this will set the webhook in the bot api.
+        self.do_startup()  # this calls the startup listeners of extending classes.
+    # end def
 
     def calculate_webhook_url(self, hostname=None, hostpath=None, hookpath="/income/{API_KEY}"):
         """
@@ -306,8 +309,6 @@ class TeleflaskBase(TeleflaskMixinBase):
 
         :return:
         """
-        self.init_bot()  # retrieve username, user_id from telegram
-        self.set_webhook()  # register telegram webhook
         super().do_startup()  # do more registered startup actions.
     # end def
 
