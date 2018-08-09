@@ -62,14 +62,14 @@ setup(
         # backoff >=1.4.1 because of a bug with the flask development server
         # see https://github.com/litl/backoff/issues/30
         "requests", "requests[security]",  # connect with the internet in general
-    ]
+    ],
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:
     # $ pip install -e .[dev,test]
-    # extras_require = {
-    # 'dev': ['check-manifest'],
+    extras_require = {
+      'dev': ['bump2version'],
     # 'test': ['coverage'],
-    # },
+    },
     # If there are data files included in your packages that need to be
     # installed, specify them here. If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
