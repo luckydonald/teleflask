@@ -56,7 +56,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "flask",  # have flask
-        "pytgbot",  # connect to telegram
+        "pytgbot>=4.0",  # connect to telegram
         "DictObject", "luckydonald-utils>=0.57",  # general utils
         "python-magic", "backoff>=1.4.1",  # messages messages
         # backoff >=1.4.1 because of a bug with the flask development server
