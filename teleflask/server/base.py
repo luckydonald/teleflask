@@ -252,6 +252,10 @@ class TeleflaskBase(TeleflaskMixinBase):
 
     @property
     def username(self):
+        """
+        Returns the name of the registerd bot
+        :return:
+        """
         return self._username
     # end def
 
