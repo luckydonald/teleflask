@@ -97,12 +97,24 @@ class TBlueprint(object):
         return self.record(update_wrapper(wrapper, func))
     # end def
 
+    def register_tblueprint(self, tblueprint, **options):
+        """
+        Like `RegisterBlueprintsMixin.register_tblueprint`
+        :param tblueprint:
+        :param options:
+        :return:
+        """
+        self.record(
+            lambda state: state.teleflask.register_tblueprint(tblueprint, **options)
+        )
+        return None
+
     def add_startup_listener(self, func):
         """
         Like `StartupMixin.remove_startup_listener`, but for this `Blueprint`.
         """
         self.record(
-            lambda state: state.app.add_startup_listener(func)
+            lambda state: state.teleflask.add_startup_listener(func)
         )
         return func
     # end def
