@@ -10,7 +10,6 @@ from pytgbot import Bot
 # from somewhere import API_KEY  # I import it from some file which is kept private, not in git.
 
 import logging
-import teleflask
 from teleflask import Teleflask
 from flask import Flask
 
