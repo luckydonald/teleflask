@@ -4,8 +4,23 @@
 A python telegram bot framework based on flask and pytgbot
 Tested to work on python 3. Might work on python 2.
 
+## Install
+##### Python Package Index
 
+```bash
+pip install teleflask
+```
 
+#### Soon
+
+Currently the source version (here on Github) is a work in progress version.
+Great features are to come, including a Blueprint feature.
+It is currently at version 2.0.0.dev7, and will be `2`.`0`.`0` when released.
+
+If you want to try it out already, run
+```bash
+pip install -e git://github.com/luckydonald/teleflask.git@v2.0.0.dev7#egg=teleflask
+```
 
 ## Usage
 
