@@ -16,9 +16,16 @@ from luckydonaldUtils.files.mime import get_file_mime
 from pytgbot import Bot as PytgbotApiBot
 from pytgbot.api_types.receivable.updates import Message as PytgbotApiMessage
 from pytgbot.api_types.sendable.files import InputFile, InputFileFromDisk, InputFileFromURL
+from pytgbot.api_types.sendable.input_media import InputMedia, InputMediaPhoto, InputMediaVideo
 from pytgbot.exceptions import TgApiServerException
 
-__all__ = ["TypingMessage", "TextMessage", "DocumentMessage", "PhotoMessage", "ImageMessage", "ForwardMessage"]
+__all__ = [
+    "TypingMessage", "HTMLMessage", "DocumentMessage", "PhotoMessage", "ImageMessage", "ForwardMessage",
+    "FileIDMessage", "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
+    "PhotoMessage", "StickerMessage", "MediaGroupMessage"
+]
+
+from luckydonaldUtils.exceptions import assert_type_or_raise
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
@@ -106,6 +113,8 @@ class Message(object):
             return True
         if hasattr(self, "top_message") and self.top_message:
             return self.top_message.is_not_empty()
+        if hasattr(self, "media") and self.media:
+            return True
         return False
 
     __nonzero__ = is_not_empty  # if Message
@@ -397,8 +406,55 @@ class PhotoMessage(DocumentMessage):
 # end class PhotoMessage
 
 
-def ImageMessage(file_path=None, file_url=None, file_content=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 disable_notification=False):
+class MediaGroupMessage(Message):
+    def __init__(self, media, receiver=None, reply_id=DEFAULT_MESSAGE_ID, reply_markup=None, disable_notification=False):
+        """
+        :param media: A array describing photos and videos to be sent, must include 2–10 items
+        :type  media: list of (InputMediaPhoto|InputMediaVideo)
+
+        Optional keyword parameters:
+
+        :param receiver: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type  receiver: int | str|unicode
+
+        :param disable_notification: Sends the messages silently. Users will receive a notification with no sound.
+        :type  disable_notification: bool
+
+        :param reply_to_message_id: If the messages are a reply, ID of the original message
+        :type  reply_to_message_id: int
+        """
+        for i, medium in enumerate(media):
+            assert_instance(medium, InputMediaPhoto, InputMediaVideo, parameter_name="media[{i}]".format(i=i))
+        # end for
+        self.media = media
+        super(MediaGroupMessage, self).__init__(receiver, reply_id, reply_markup, disable_notification)
+    # end def
+
+    def is_not_empty(self):
+        return self.media and len(self.media) > 2
+    # end if
+
+    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    def send(self, sender: PytgbotApiBot, receiver, reply_id):
+        """
+        :rtype: PytgbotApiMessage
+        """
+        if self.receiver:
+            receiver = self.receiver
+        # end if
+        if self.reply_id is not DEFAULT_MESSAGE_ID:
+            reply_id = self.reply_id
+        # end if
+
+        sender.send_media_group(
+            receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
+        )
+    # end def
+# end def
+
+
+def ImageMessage(file_path=None, file_url=None, file_content=None, caption=None, receiver=None,
+                 reply_id=DEFAULT_MESSAGE_ID, disable_notification=False):
     """
     If you want to automaticly detect mime-type to send uncompressed if needed. (e.g. for gifs)
     You could use `PhotoMessage` if you only do send png's and jpg's,

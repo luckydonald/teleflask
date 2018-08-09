@@ -21,7 +21,7 @@
     Use `Teleflask` instead.
 - Added `inline_query` peer support to automatic replying.
 - Improved automatic replying to work on updates with `callback_query`.
-- Added new `GameMessage` as automatic reply type.
+- Added new `GameMessage` and `MediaGroupMessage` as automatic reply type.
 
 #### Added **blueprint** mechanics:
 
