@@ -5,6 +5,10 @@
 
 - **renamed** `reply_id` to `reply_msg` and `reply_to` to `reply_chat` and
 - **method signature change**: switched order to `reply_chat, reply_msg` (chat now first).
+- **removed**: premade mixin-mixes `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates` and `TeleflaskStartup`.
+    They were never used anyway.
+    Either recreate them on your own, or use the `Teleflask` class.
+    This will also make using the new `TBlueprints` more straightforward.
 
 ##### This affects:
 
@@ -13,8 +17,6 @@
 
 #### Other changes
 
-- Removed class mixes: `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates`, `TeleflaskStartup`. They were never used anyway.
-    Either recreate them on your own, or use the `Teleflask` class.
 - Removed deprecated `TeleflaskComplete` class which is just the old name for the `Teleflask` class.
     Use `Teleflask` instead.
 - Added `inline_query` peer support to automatic replying.
@@ -23,15 +25,7 @@
 
 #### Added **blueprint** mechanics:
 
-```python
-# main.py
-from teleflask import Teleflask
-from somefile import part
-
-bot = Teleflask(API_KEY, app)
-bot.register_blueprint(part)
-```
-
+So in any file you can now write
 ```python
 # part.py
 from teleflask import TBlueprint
@@ -43,6 +37,22 @@ def foobar(update, msg):
     return "A message like ususal."
 # end def
 ```
+
+In your main file where you have your Teleflask instance you just have to register them.
+```python
+# main.py
+from teleflask import Teleflask
+from somefile import part
+
+bot = Teleflask(API_KEY, app)
+bot.register_blueprint(part)
+
+# alternatively:
+
+bot = Teleflask(API_KEY, app)
+
+```
+
 
 
 ## v1.0.1 - 2018-07-04
