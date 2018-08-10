@@ -91,7 +91,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
         """
         self.__api_key = api_key
-        self.bot = None  # will be set in self.init_bot()
+        self._bot = None  # will be set in self.init_bot()
         self.app = None  # will be filled out by self.init_app(...)
         self.blueprint = None  # will be filled out by self.init_app(...)
         self._return_python_objects = return_python_objects
@@ -114,17 +114,17 @@ class TeleflaskBase(TeleflaskMixinBase):
         
         :return: 
         """
-        if not self.bot:  # so you can manually set it before calling `init_app(...)`,
+        if not self._bot:  # so you can manually set it before calling `init_app(...)`,
             # e.g. a mocking bot class for unit tests
-            self.bot = Bot(self.__api_key, return_python_objects=self._return_python_objects)
-        elif self.bot.return_python_objects != self._return_python_objects:
+            self._bot = Bot(self.__api_key, return_python_objects=self._return_python_objects)
+        elif self._bot.return_python_objects != self._return_python_objects:
             # we don't have the same setting as the given one
             raise ValueError("The already set bot has return_python_objects {given}, but we have {our}".format(
-                given=self.bot.return_python_objects, our=self._return_python_objects
+                given=self._bot.return_python_objects, our=self._return_python_objects
             ))
         # end def
-        myself = self.bot.get_me()
-        if self.bot.return_python_objects:
+        myself = self._bot.get_me()
+        if self._bot.return_python_objects:
             self._user_id = myself.id
             self._username = myself.username
         else:
@@ -250,6 +250,14 @@ class TeleflaskBase(TeleflaskMixinBase):
         return hookpath, webhook_url
     # end def
 
+    @property
+    def bot(self):
+        """
+        :return: Returns the bot
+        :rtype: Bot
+        """
+        return self._bot
+    # end def
     @property
     def username(self):
         """
