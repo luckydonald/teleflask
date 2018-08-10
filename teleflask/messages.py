@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 MAX_TEXT_LENGTH = 4096  # should be 2048?
 RE_TG_USERNAME = r"((^|\s*)@(?P<username>(?:[a-z](?:[a-z0-9]|_(?!_)){3,}[a-z0-9])|" \
                  r"(?:gif|vid|wiki|pic|bing|imdb|bold))(\s*|$))"  # https://regex101.com/r/gS5lZ6/2
+RE_TOO_MANY_REQUESTS = r"Too Many Requests: retry after (\d+)"
 
 class DEFAULT_MESSAGE_ID(object):
     """
@@ -59,7 +60,7 @@ def should_backoff(e):
     if e.error_code == 429 or "too many requests" in e.description or "retry later" in e.description:
         import re
         from time import sleep
-        error_wait_match = re.compile("Too Many Requests: retry after (\d+)").match(e.description)
+        error_wait_match = re.compile(RE_TOO_MANY_REQUESTS).match(e.description)
         if error_wait_match:
             seconds_to_wait = int(error_wait_match.group(1))
             logger.warn("API Error: Too many Telegram requests. Instructed to wait {many} seconds.".format(many=seconds_to_wait))
