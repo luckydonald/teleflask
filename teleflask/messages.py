@@ -63,10 +63,10 @@ def should_backoff(e):
         error_wait_match = re.compile(RE_TOO_MANY_REQUESTS).match(e.description)
         if error_wait_match:
             seconds_to_wait = int(error_wait_match.group(1))
-            logger.warn("API Error: Too many Telegram requests. Instructed to wait {many} seconds.".format(many=seconds_to_wait))
+            logger.warning("API Error: Too many Telegram requests. Instructed to wait {many} seconds.".format(many=seconds_to_wait))
             if seconds_to_wait > 600:  # 10 Minutes
                 seconds_to_wait = 600
-                logger.warn("Maximum is waiting 600 seconds (10 minutes).")
+                logger.warning("Maximum is waiting 600 seconds (10 minutes).")
             sleep(seconds_to_wait + 1)  # It always is one second more. Go figure
         raise DoRetryException()
     # end if
@@ -370,7 +370,7 @@ class PhotoMessage(DocumentMessage):
             receiver=receiver, reply_id=reply_id, reply_markup=reply_markup, disable_notification=disable_notification
         )  # let DocumentMessage handle this
         if caption is not None and len(caption) > 140:
-            logger.warn("Caption longer as 140. Cutting {len} characters.".format(len=len(caption) - 137))
+            logger.warning("Caption longer as 140. Cutting {len} characters.".format(len=len(caption) - 137))
             caption = cut_paragraphs(caption, length=140)[:140]
         self.caption = caption
 

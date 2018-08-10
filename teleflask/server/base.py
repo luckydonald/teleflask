@@ -564,7 +564,7 @@ class TeleflaskBase(TeleflaskMixinBase):
             logger.debug("Ignored result {res!r}".format(res=result))
             # ignore it
         else:
-            logger.warn("Unexpected plugin result: {type}".format(type=type(result)))
+            logger.warning("Unexpected plugin result: {type}".format(type=type(result)))
         # end if
     # end def
 
