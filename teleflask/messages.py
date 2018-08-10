@@ -30,9 +30,8 @@ __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
 MAX_TEXT_LENGTH = 4096  # should be 2048?
-RE_TG_USERNAME = "((^|\s*)@(?P<username>(?:[a-z](?:[a-z0-9]|_(?!_)){3,}[a-z0-9])|" \
-                 "(?:gif|vid|wiki|pic|bing|imdb|bold))(\s*|$))"  # https://regex101.com/r/gS5lZ6/2
-
+RE_TG_USERNAME = r"((^|\s*)@(?P<username>(?:[a-z](?:[a-z0-9]|_(?!_)){3,}[a-z0-9])|" \
+                 r"(?:gif|vid|wiki|pic|bing|imdb|bold))(\s*|$))"  # https://regex101.com/r/gS5lZ6/2
 
 class DEFAULT_MESSAGE_ID(object):
     """
