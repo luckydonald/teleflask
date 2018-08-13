@@ -1,7 +1,9 @@
 import json
+import requests
 import unittest
 import os
 from unittest import TestLoader
+from unittest import mock
 
 import pytgbot
 from DictObject import DictObject
@@ -16,6 +18,15 @@ from flask import Flask
 logging.basicConfig(level=logging.DEBUG)
 API_KEY = "lel1324fakeAPIKEY"
 
+
+class ResponseTestable(requests.Response):
+    def __init__(self, json, *args, **kwargs):
+        self._json = json
+    # end def
+    @property
+    def json(self):
+        return self.json
+    # end def
 
 
 class BotTestable(Bot):
@@ -51,7 +62,8 @@ class BotTestable(Bot):
         :return:
         """
         if command in self.fake_responses:
-            return self._postprocess_data(self.fake_responses[command])
+            r = ResponseTestable(self.fake_responses[command])
+            return self._postprocess_request(r)
         # end if
         url, params = self._prepare_request(command, query)
 
@@ -66,8 +78,10 @@ class BotTestable(Bot):
     # end def
 # end class
 
+from pytgbot import bot as pytgbot_bot
 # replace the Bot in pytgbot with our Mockup, so `isinstance` checks will succeed.
 pytgbot.Bot = BotTestable
+pytgbot_bot.Bot = BotTestable
 # also everywhere where it would be imported.
 from teleflask.server import base as tf_s_base
 tf_s_base.Bot = BotTestable
@@ -88,7 +102,8 @@ class SomeTestCase(unittest.TestCase):
         # replace the :class:`pytgbot.Bot` instance with something testable. (not using TG server)
         # All methods now return the stuff they would sent to the telegram servers as json instead.
         # This is not usable with the :class:`teleflask.message.Message` (sub)types.
-        self.bot.bot = BotTestable(API_KEY, return_python_objects=self.bot._return_python_objects)
+        self.bot._bot = BotTestable(API_KEY, return_python_objects=self.bot._return_python_objects)
+        assert isinstance(self.bot.bot, BotTestable)
 
         # Init must be before replacing the ``bot.bot``,
         # because else the :meth:`Bot.getWebhook` won't work as expected in startup.

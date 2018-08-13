@@ -22,6 +22,8 @@ class SenderMockup(object):
         return super().__getattribute__(item)
     # end def
 # end class
+
+
 s = SenderMockup()
 s.send_("test")
 
