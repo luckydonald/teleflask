@@ -95,34 +95,40 @@ class UpdatesMixin(TeleflaskMixinBase):
                                   Must be a list.
         :return: the function, unmodified
         """
-        # checking input.
-        if not required_keywords:
-            required_keywords = []
-        elif isinstance(required_keywords, str):
-            required_keywords = [required_keywords]
+
+        if required_keywords is None:
+            self.update_listeners[function] = [None]
+            logging.debug("listener required keywords set to allow all.")
+            return function
+        # end def
+
+        # check input, make a list out of what we might get.
+        if isinstance(required_keywords, str):
+            required_keywords = [required_keywords]  # str => [str]
         elif isinstance(required_keywords, tuple):
-            required_keywords = list(required_keywords)
+            required_keywords = list(required_keywords)  # (str,str) => [str,str]
         # end if
         assert isinstance(required_keywords, list)
         for keyword in required_keywords:
             assert isinstance(keyword, str)  # required_keywords must all be type str
         # end if
 
-        if not required_keywords:
-            # [] == allow all. This can overwrite previous filters.
-            self.update_listeners[function] = []
-            logging.debug("listener required keywords set to allow all.")
-        elif function not in self.update_listeners:
+        if function not in self.update_listeners:
             # function does not exists, create the keywords.
             logging.debug("adding function to listeners")
             self.update_listeners[function] = [required_keywords]  # list of lists. Outer list = OR, inner = AND
         else:
             # function already exists, add/merge the keywords.
-            if required_keywords not in self.update_listeners[function] and self.update_listeners[function]:
+            if None in self.update_listeners[function]:
+                # None => allow all, so we don't need to add a filter
+                logger.debug('listener not updated, as it is already wildcard')
+            elif required_keywords in self.update_listeners[function] and self.update_listeners[function]:
+                # the keywords already are required, we don't need to add a filter
+                logger.debug("listener required keywords already in {!r}".format(self.update_listeners[function]))
+            else:
+                # add another case
                 self.update_listeners[function].append(required_keywords)  # Outer list = OR, required_keywords = AND
                 logger.debug("listener required keywords updated to {!r}".format(self.update_listeners[function]))
-            else:
-                logger.debug("listener required keywords already in {!r}".format(self.update_listeners[function]))
             # end if
         # end if
         return function

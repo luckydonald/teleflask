@@ -380,7 +380,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         )
         self.assertEqual(
             self.mixin.update_listeners[add_update_listener__callback],
-            [],
+            [None],
             "[] => listener unfiltered"
         )
 
@@ -395,7 +395,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         )
         self.assertEqual(
             self.mixin.update_listeners[add_update_listener__callback],
-            [],
+            [None],
             "listener filter list still None => filter did not overwrite unfiltered"
         )
     # end def
@@ -438,7 +438,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         )
         self.assertEqual(
             self.mixin.update_listeners[add_update_listener__callback],
-            [],
+            [None],
             "listener filter list now None => filter overwritten with unfiltered"
         )
     # end def
