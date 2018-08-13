@@ -482,7 +482,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
 
     def remove_command(self, command=None, function=None):
         """
-        :param command: remove them by command, e.g. `test`
+        :param command: remove them by command, e.g. `test`.
         :param function: remove them by function
         :return: 
         """
@@ -496,7 +496,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
             # end for
         # end if
         if function:
-            for key, value in self.commands.items():
+            for key, value in list(self.commands.items()):  # list to allow deletion
                 func, exclusive = value
                 if func == function:
                     del self.commands[key]
