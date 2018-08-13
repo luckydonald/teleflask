@@ -398,7 +398,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
         >>>     ...  # like above
     """
     def __init__(self, *args, **kwargs):
-        self.commands = dict()
+        self.commands = dict()  # 'cmd': (fuction, exclusive:bool)
         super(BotCommandsMixin, self).__init__(*args, **kwargs)
     # end def
 
@@ -470,6 +470,12 @@ class BotCommandsMixin(TeleflaskMixinBase):
         :return: Nothing
         """
         for cmd in self._yield_commands(command):
+            if cmd in self.commands:
+                raise AssertionError(
+                    'Command function mapping is overwriting an existing command: {!r} would overwrite {}.'.format(
+                        command, cmd
+                    )
+                )
             self.commands[cmd] = (function, exclusive)
         # end for
     # end def add_command
