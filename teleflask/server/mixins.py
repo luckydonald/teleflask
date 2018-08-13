@@ -84,10 +84,10 @@ class UpdatesMixin(TeleflaskMixinBase):
             >>> add_update_listener(func, required_keywords=["update_id", "message"])
             # will call  func(msg)  for all updates which are message (have the message attribute) and have a update_id.
 
-            >>> add_message_listener(func, required_keywords=["inline_query"])
+            >>> add_update_listener(func, required_keywords=["inline_query"])
             # calls   func(msg)     for all updates which are inline queries (have the inline_query attribute)
 
-            >>> add_message_listener(func)
+            >>> add_update_listener(func)
             # allows all messages.
 
         :param function:  The function to call. Will be called with the update and the message as arguments
@@ -122,7 +122,7 @@ class UpdatesMixin(TeleflaskMixinBase):
             if None in self.update_listeners[function]:
                 # None => allow all, so we don't need to add a filter
                 logger.debug('listener not updated, as it is already wildcard')
-            elif required_keywords in self.update_listeners[function] and self.update_listeners[function]:
+            elif required_keywords in self.update_listeners[function]:
                 # the keywords already are required, we don't need to add a filter
                 logger.debug("listener required keywords already in {!r}".format(self.update_listeners[function]))
             else:
@@ -132,7 +132,7 @@ class UpdatesMixin(TeleflaskMixinBase):
             # end if
         # end if
         return function
-    # end def add_update_listenner
+    # end def add_update_listener
 
     def remove_update_listener(self, func):
         """
@@ -290,35 +290,42 @@ class MessagesMixin(TeleflaskMixinBase):
         :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
         :return: the function, unmodified
         """
-        # checking input.
-        if not required_keywords:
-            required_keywords = []
-        # end if
+        if required_keywords is None:
+            self.message_listeners[function] = [None]
+            logging.debug("listener required keywords set to allow all.")
+            return function
+        # end def
+
+        # check input, make a list out of what we might get.
         if isinstance(required_keywords, str):
-            required_keywords = [required_keywords]
+            required_keywords = [required_keywords]  # str => [str]
         elif isinstance(required_keywords, tuple):
-            required_keywords = list(required_keywords)
+            required_keywords = list(required_keywords)  # (str,str) => [str,str]
         # end if
         assert isinstance(required_keywords, list)
         for keyword in required_keywords:
             assert isinstance(keyword, str)  # required_keywords must all be type str
         # end if
 
-        # checking if already exists.
         if function not in self.message_listeners:
-            logging.debug("added function to listeners")
-            self.message_listeners[function] = [required_keywords]
+            # function does not exists, create the keywords.
+            logging.debug("adding function to listeners")
+            self.message_listeners[function] = [required_keywords]  # list of lists. Outer list = OR, inner = AND
         else:
-            # add the keywords.
-            if required_keywords not in self.message_listeners[function]:
+            # function already exists, add/merge the keywords.
+            if None in self.message_listeners[function]:
+                # None => allow all, so we don't need to add a filter
+                logger.debug('listener not updated, as it is already wildcard')
+            elif required_keywords in self.message_listeners[function]:
+                # the keywords already are required, we don't need to add a filter
+                logger.debug("listener required keywords already in {!r}".format(self.message_listeners[function]))
+            else:
                 self.message_listeners[function].append(required_keywords)
                 logger.debug("listener required keywords updated to {!r}".format(self.message_listeners[function]))
-            else:
-                logger.debug("listener required keywords already in {!r}".format(self.message_listeners[function]))
             # end if
         # end if
         return function
-    # end def add_command
+    # end def add_message_listener
 
     def remove_message_listeners(self, func):
         """

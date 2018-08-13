@@ -20,12 +20,24 @@ API_KEY = "lel1324fakeAPIKEY"
 
 
 class ResponseTestable(requests.Response):
-    def __init__(self, json, *args, **kwargs):
+    def __init__(self, json, status_code, *args, **kwargs):
         self._json = json
+        self._status_code = status_code
     # end def
-    @property
+
+    # not a @property
     def json(self):
-        return self.json
+        return self._json
+    # end def
+
+    @property
+    def status_code(self):
+        return self._status_code
+    # end def
+
+    @property
+    def content(self):
+        return json.dumps(self._json)
     # end def
 
 
@@ -62,7 +74,7 @@ class BotTestable(Bot):
         :return:
         """
         if command in self.fake_responses:
-            r = ResponseTestable(self.fake_responses[command])
+            r = ResponseTestable(self.fake_responses[command], 200)
             return self._postprocess_request(r)
         # end if
         url, params = self._prepare_request(command, query)
@@ -78,6 +90,7 @@ class BotTestable(Bot):
     # end def
 # end class
 
+
 from pytgbot import bot as pytgbot_bot
 # replace the Bot in pytgbot with our Mockup, so `isinstance` checks will succeed.
 pytgbot.Bot = BotTestable
@@ -85,8 +98,6 @@ pytgbot_bot.Bot = BotTestable
 # also everywhere where it would be imported.
 from teleflask.server import base as tf_s_base
 tf_s_base.Bot = BotTestable
-
-
 
 
 class SomeTestCase(unittest.TestCase):
@@ -128,7 +139,8 @@ class SomeTestCase(unittest.TestCase):
             "from": {
                 "id": 1234,
                 "first_name": "Test User",
-                "username": "username"
+                "username": "username",
+                "is_bot": False
             },
             "chat": {
                 "id": 1234,
@@ -166,7 +178,7 @@ class SomeTestCase(unittest.TestCase):
 
     def test_on_message(self):
         @self.bot.on_message
-        def _callback_test_on_message(msg):
+        def _callback_test_on_message(update, msg):
             self.callbacks_status["_callback_test_on_message"] = msg
         # end def
 
@@ -176,12 +188,12 @@ class SomeTestCase(unittest.TestCase):
         msg = self.callbacks_status["_callback_test_on_message"]
         from pytgbot.api_types.receivable.updates import Message
         self.assertIsInstance(msg, Message)
-        self.assertEquals(msg.to_array(), self.data_cmd["message"])
+        self.assertDictEqual(msg.to_array(), self.data_cmd["message"])
     # end def
 
     def test_on_message2(self):
         @self.bot.on_message("text")
-        def _callback_test_on_message2(msg):
+        def _callback_test_on_message2(update, msg):
             self.callbacks_status["_callback_test_on_message2"] = msg
         # end def
 
@@ -191,7 +203,7 @@ class SomeTestCase(unittest.TestCase):
         msg = self.callbacks_status["_callback_test_on_message2"]
         from pytgbot.api_types.receivable.updates import Message
         self.assertIsInstance(msg, Message)
-        self.assertEquals(msg.to_array(), self.data_cmd["message"])
+        self.assertDictEqual(msg.to_array(), self.data_cmd["message"])
     # end def
 
     def test_on_message3(self):
