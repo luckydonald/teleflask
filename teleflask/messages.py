@@ -15,12 +15,12 @@ from luckydonaldUtils.files.mime import get_file_mime
 
 from pytgbot import Bot as PytgbotApiBot
 from pytgbot.api_types.receivable.updates import Message as PytgbotApiMessage
-from pytgbot.api_types.sendable.files import InputFile, InputFileFromDisk, InputFileFromURL
+from pytgbot.api_types.sendable.files import InputFile, InputFileFromDisk, InputFileFromURL, InputFileFromBlob
 from pytgbot.api_types.sendable.input_media import InputMedia, InputMediaPhoto, InputMediaVideo
 from pytgbot.exceptions import TgApiServerException
 
 __all__ = [
-    "TypingMessage", "HTMLMessage", "DocumentMessage", "PhotoMessage", "ImageMessage", "ForwardMessage",
+    "TypingMessage", "HTMLMessage", "DocumentMessage", "ImageMessage", "ForwardMessage",
     "FileIDMessage", "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
     "PhotoMessage", "StickerMessage", "MediaGroupMessage"
 ]
@@ -251,9 +251,10 @@ class TypingMessage(Message):
 
 class DocumentMessage(Message):
 
-    def __init__(self, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         """
+        You can specify a `file_id` to re-send existing content, already on telegram's servers.
         You can specify a `file_url` to download it. It will get mime and filename from there.
         You can specify a `file_path` to load it from disk. It will get mime and filename from there.
         You can specify a `file_content` and a `file_path`. It will use the mime from the content, and get the filename part from the path.
@@ -262,30 +263,45 @@ class DocumentMessage(Message):
         You can specify a `file_content`, the `file_mime` and a `file_url`.  It will use the mime from as in `file_mime`, and get the filename part from the url.
 
 
+        :param file_id:
+        :type  file_id: str|None
+
         :param file_path:
+        :type  file_path: str|None
+
         :param file_url:
+        :type  file_url: str|None
+
         :param file_content:
+        :type  file_content: bytes|None
+
         :param caption:
+        :type  caption: str|None
+
         :param receiver:
         :param reply_id:
         :param reply_markup:
         :param disable_notification:
         """
         super().__init__(receiver=receiver, reply_id=reply_id)
-        if not file_path and not file_url and not file_content:
-            raise AttributeError("Neither URL (file_url) nor local path (file_path) nor any binary data (file_content) given.")
-        if file_path and not file_content and not file_url and not os.path.isfile(file_path):
-            raise FileNotFoundError("There is no file '{path}', and there is no url or content given.".format(
-                path=self.file_path
-            ))
-        if file_content and file_path:
-            logger.info("Binary data (file_content) given, using local path (file_path) for the name.")
-        elif file_content and file_url:
-            logger.info("Binary data (file_content) given, using url parameter (file_url) for the name.")
-        elif not file_content and file_path and file_url:
-            logger.info("File path (file_path) given, ignoring url parameter (file_url).")
-            # logger.info("Both URL (file_url) AND a local path (file_path) given, using the file, if exists.")
-            # THINKABOUT: try to use the file, and if it does not exist, download freshly. Like caching.
+        if not file_id:
+            if not file_path and not file_url and not file_content:
+                raise AttributeError("Neither URL (file_url) nor local path (file_path) nor any binary data (file_content) given.")
+            if file_path and not file_content and not file_url and not os.path.isfile(file_path):
+                raise FileNotFoundError("There is no file '{path}', and there is no url or content given.".format(
+                    path=self.file_path
+                ))
+            if file_content and file_path:
+                logger.info("Binary data (file_content) given, using local path (file_path) for the name.")
+            elif file_content and file_url:
+                logger.info("Binary data (file_content) given, using url parameter (file_url) for the name.")
+            elif not file_content and file_path and file_url:
+                logger.info("File path (file_path) given, ignoring url parameter (file_url).")
+                # logger.info("Both URL (file_url) AND a local path (file_path) given, using the file, if exists.")
+                # THINKABOUT: try to use the file, and if it does not exist, download freshly. Like caching.
+            # end if
+        # end if
+        self.file_id = file_id
         self.file_content = file_content
         self.file_path = file_path
         self.file_url = file_url
@@ -306,7 +322,9 @@ class DocumentMessage(Message):
         or a fitting sublcass (:class:`InputFileFromDisk`, :class:`InputFileFromURL`)
         :return: Nothing
         """
-        if self.file_content:
+        if self.file_id:
+            self.file = self.file_id
+        elif self.file_content:
             file_name = "file"
             file_suffix = ".blob"
             if self.file_path:
@@ -328,7 +346,7 @@ class DocumentMessage(Message):
                 file_suffix = ".blob"
             # end if
             file_name = "{filename}{suffix}".format(filename=file_name, suffix=file_suffix)
-            self.file = InputFile(self.file_content, file_name=file_name, file_mime=self.file_mime)
+            self.file = InputFileFromBlob(self.file_content, file_name=file_name, file_mime=self.file_mime)
         elif self.file_path:
             self.file = InputFileFromDisk(self.file_path, file_mime=self.file_mime)
         elif self.file_url:
@@ -363,10 +381,10 @@ class PhotoMessage(DocumentMessage):
     Sends a photo, compressed.
     Use `ImageMessage` if you want to automaticly detect mime-type to send uncompressed if needed. (e.g. for gifs)
     """
-    def __init__(self, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         super().__init__(
-            file_path, file_url=file_url, file_content=file_content, file_mime=file_mime, caption=caption,
+            file_id=file_id, file_path=file_path, file_url=file_url, file_content=file_content, file_mime=file_mime, caption=caption,
             receiver=receiver, reply_id=reply_id, reply_markup=reply_markup, disable_notification=disable_notification
         )  # let DocumentMessage handle this
         if caption is not None and len(caption) > 140:
@@ -383,16 +401,19 @@ class PhotoMessage(DocumentMessage):
             reply_id = self.reply_id
         # end if
         self.prepare_file()
-        assert isinstance(self.file, (InputFile, InputFileFromDisk, InputFileFromURL))
-        if not any([self.file.file_name.endswith(x) for x in [".jpg", ".jpeg", ".gif", ".png", ".tif", ".bmp"]]):
+        assert isinstance(self.file, (InputFile, InputFileFromDisk, InputFileFromURL, str))
+        if not self.file_id and not any([self.file.file_name.endswith(x) for x in [".jpg", ".jpeg", ".gif", ".png", ".tif", ".bmp"]]):
+            # set the suffix
             if self.file.file_mime in ["image/jpg", "image/jpeg", "image/jpe"]:  # manually, to avoid .jpe ending.
-                self.file.file_name+=".jpg"
+                self.file.file_name += ".jpg"
             else:
                 import mimetypes
                 ext = mimetypes.guess_extension(self.file.file_mime)  # automatically
                 if ext not in [".jpg", ".jpeg", ".gif", ".png", ".tif", ".bmp"]:
                     ext = ".unknown-file-type.png"  # At least we can try setting it as .png
                 self.file.file_name += ext
+            # end if
+        # end if
         try:
             return sender.send_photo(
                 receiver, self.file, caption=self.caption, reply_to_message_id=reply_id, reply_markup=self.reply_markup,
@@ -446,7 +467,7 @@ class MediaGroupMessage(Message):
             reply_id = self.reply_id
         # end if
 
-        sender.send_media_group(
+        return sender.send_media_group(
             receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
         )
     # end def
