@@ -38,7 +38,11 @@ class UpdatesMixin(TeleflaskMixinBase):
 
     """
     def __init__(self, *args, **kwargs):
-        self.update_listeners = OrderedDict()  # Python3.6, dicts are sorted # Schema: {func: [ ["message", "key", "..."] ]}  or  {func: None} for whildcard.
+        self.update_listeners = OrderedDict()  # Python3.6, dicts are sorted # Schema:
+        # Schema: {func: [ ["message", "key", "..."] ]}  or  {func: None} for wildcard.
+        #                [ ['A', 'B'], ['C'] ] == 'A' and 'B' or 'C'
+        #                [ ]  means 'allow all'.
+
         super(UpdatesMixin, self).__init__(*args, **kwargs)
     # end def
 
@@ -94,8 +98,7 @@ class UpdatesMixin(TeleflaskMixinBase):
         # checking input.
         if not required_keywords:
             required_keywords = []
-        # end if
-        if isinstance(required_keywords, str):
+        elif isinstance(required_keywords, str):
             required_keywords = [required_keywords]
         elif isinstance(required_keywords, tuple):
             required_keywords = list(required_keywords)
@@ -105,14 +108,18 @@ class UpdatesMixin(TeleflaskMixinBase):
             assert isinstance(keyword, str)  # required_keywords must all be type str
         # end if
 
-        # checking if already exists.
-        if function not in self.update_listeners:
-            logging.debug("added function to listeners")
-            self.update_listeners[function] = [required_keywords]
+        if not required_keywords:
+            # [] == allow all. This can overwrite previous filters.
+            self.update_listeners[function] = []
+            logging.debug("listener required keywords set to allow all.")
+        elif function not in self.update_listeners:
+            # function does not exists, create the keywords.
+            logging.debug("adding function to listeners")
+            self.update_listeners[function] = [required_keywords]  # list of lists. Outer list = OR, inner = AND
         else:
-            # add the keywords.
-            if required_keywords not in  self.update_listeners[function]:
-                self.update_listeners[function].append(required_keywords)
+            # function already exists, add/merge the keywords.
+            if required_keywords not in self.update_listeners[function] and self.update_listeners[function]:
+                self.update_listeners[function].append(required_keywords)  # Outer list = OR, required_keywords = AND
                 logger.debug("listener required keywords updated to {!r}".format(self.update_listeners[function]))
             else:
                 logger.debug("listener required keywords already in {!r}".format(self.update_listeners[function]))

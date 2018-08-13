@@ -317,17 +317,45 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         self.mixin.add_update_listener(add_update_listener__callback, ["edited_message"])
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback], "=> listener list correct")
-        self.assertListEqual(self.mixin.update_listeners[add_update_listener__callback], ["edited_message"],
-                             "listener filter list correct")
-
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "=> listener list correct"
+        )
+        self.assertListEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [["edited_message"]],
+            "listener filter list correct"
+        )
+        # add another update listener
         self.mixin.add_update_listener(add_update_listener__callback, ["message"])
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener still added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback],
-                             "listener list still correct => no duplicates")
-        self.assertListEqual(self.mixin.update_listeners[add_update_listener__callback], ["edited_message", "message"],
-                             "listener filter list correct => added keyword")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "listener list still correct => no duplicates"
+        )
+        self.assertListEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [["edited_message"], ["message"]],  # [[AND] OR [AND]]
+            "listener filter list correct => added keyword"
+        )
+
+        # add another update listener
+        self.mixin.add_update_listener(add_update_listener__callback, ["message", "edited_message"])
+
+        self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener still added")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "listener list still correct => no duplicates"
+        )
+        self.assertListEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [["edited_message"], ["message"], ["message", "edited_message"]],  # [[AND] OR [AND] OR ['' AND '']]
+            "listener filter list correct => added keyword"
+        )
     # end def
 
     def test__add_update_listener__no_duplicates__overwrite_unfiltered(self):
@@ -341,20 +369,35 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
 
         self.assertFalse(self.mixin.update_listeners, "empty listener list => still not added")
 
+        # add unfiltered listener
         self.mixin.add_update_listener(add_update_listener__callback)
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback], "=> listener added to list correctly")
-        self.assertEqual(self.mixin.update_listeners[add_update_listener__callback], None,
-                         "None => listener unfiltered")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "=> listener added to list correctly"
+        )
+        self.assertEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [],
+            "[] => listener unfiltered"
+        )
 
+        # add unfiltered listener again, this time with filter
         self.mixin.add_update_listener(add_update_listener__callback, ["message"])
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener still added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback],
-                             "listener list still correct => no duplicates")
-        self.assertEqual(self.mixin.update_listeners[add_update_listener__callback], None,
-                         "listener filter list still None => filter did not overwrite unfiltered")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "listener list still correct => no duplicates"
+        )
+        self.assertEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [],
+            "listener filter list still None => filter did not overwrite unfiltered"
+        )
     # end def
 
     def test__add_update_listener__no_duplicates__unfiltered_overwrites(self):
@@ -368,21 +411,36 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
 
         self.assertFalse(self.mixin.update_listeners, "empty listener list => still not added")
 
+        # add with filter
         self.mixin.add_update_listener(add_update_listener__callback, ["message"])
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback],
-                             "listener list is correct")
-        self.assertListEqual(self.mixin.update_listeners[add_update_listener__callback], ["message"],
-                             "listener filter list correct")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "listener list is correct"
+        )
+        self.assertListEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [["message"]],
+            "listener filter list correct"
+        )
 
+        # add unfiltered
         self.mixin.add_update_listener(add_update_listener__callback)
+        # should delete filter.
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners, "in list => listener still added")
-        self.assertListEqual(list(self.mixin.update_listeners.keys()), [add_update_listener__callback],
-                             "listener list still correct => no duplicates")
-        self.assertEqual(self.mixin.update_listeners[add_update_listener__callback], None,
-                         "listener filter list now None => filter overwritten with unfiltered")
+        self.assertListEqual(
+            list(self.mixin.update_listeners.keys()),
+            [add_update_listener__callback],
+            "listener list still correct => no duplicates"
+        )
+        self.assertEqual(
+            self.mixin.update_listeners[add_update_listener__callback],
+            [],
+            "listener filter list now None => filter overwritten with unfiltered"
+        )
     # end def
 
     def test__remove_update_listener(self):
