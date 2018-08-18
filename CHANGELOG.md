@@ -9,11 +9,15 @@
     They were never used anyway.
     Either recreate them on your own, or use the `Teleflask` class.
     This will also make using the new `TBlueprints` more straightforward.
+- **removed** `FileIDMessage`. This was a custom `DocumentMessage`, before they could do `file_id`.
+    Use `DocumentMessage(file_id="...")` instead.
 
 ##### This affects:
 
-- parameters of `bot.send_message`, `bot.send_messages`
-- returned values from `bot.msg_get_reply_params`
+- parameters of `bot.send_message`, `bot.send_messages`.
+- returned values from `bot.msg_get_reply_params`.
+- usage of `FileIDMessage`.
+- usage of `TeleflaskCommands`, `TeleflaskMessages`, `TeleflaskUpdates` and `TeleflaskStartup`.
 
 #### Other changes
 

@@ -8,6 +8,7 @@ import requests
 
 from DictObject import DictObject
 from luckydonaldUtils.encoding import unicode_type
+from luckydonaldUtils.decorators import deprecated
 
 from luckydonaldUtils.exceptions import assert_type_or_raise as assert_instance
 from luckydonaldUtils.text import text_split, cut_paragraphs, escape
@@ -21,7 +22,7 @@ from pytgbot.exceptions import TgApiServerException
 
 __all__ = [
     "TypingMessage", "HTMLMessage", "DocumentMessage", "ImageMessage", "ForwardMessage",
-    "FileIDMessage", "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
+    "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
     "PhotoMessage", "StickerMessage", "MediaGroupMessage"
 ]
 
@@ -250,7 +251,6 @@ class TypingMessage(Message):
 
 
 class DocumentMessage(Message):
-
     def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         """
@@ -516,46 +516,10 @@ def ImageMessage(file_path=None, file_url=None, file_content=None, caption=None,
 # end class
 
 
-class FileIDMessage(Message):
-    def __init__(self, file_id, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False):
-        """
-        :param file_id: the ID of the file
-        :param caption: A optional string.
-        :param receiver:
-        :param reply_id:
-        :param reply_markup:
-        :param disable_notification:
-        """
-        super().__init__(receiver=receiver, reply_id=reply_id, reply_markup=reply_markup,
-                         disable_notification=disable_notification)
-        self.file_id = file_id
-        self.caption=caption
-    # end def __init__
-
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=10, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
-        try:
-            return self.actual_sending(sender, receiver, reply_id)
-        except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
-            raise  # else it just raises as usual
-        # end try
-    # end def send
-
-    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
-        return sender.send_document(
-            receiver, self.file_id, caption=self.caption, reply_to_message_id=reply_id,
-            reply_markup=self.reply_markup, disable_notification=self.disable_notification
-        )
-    # end def
-# end class
+@deprecated('Use DocumentMessage instead.')
+def FileIDMessage(*args, **kwargs):
+    return DocumentMessage(*args, **kwargs)  # this probably fails.
+# end def
 
 
 class StickerMessage(FileIDMessage):
