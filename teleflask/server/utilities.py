@@ -11,12 +11,26 @@ def _class_self_decorate(decorator_name):
     This is to be able to use it already before the class is completely parsed.
 
     >>> class Foo():
-    >>>    def jsonfify(self, func):
+    >>>    def jsonify(self, func):
     >>>        print("value = " + str(self.value))
     >>>        return func
     >>>    # end def
     >>>
-    >>>    @_class_self_decorate("jsonfify")
+    >>>    @_class_self_decorate("jsonify")
+    >>>    def bar(self):
+    >>>        pass
+
+    You can even prepare it before usage, outside of the class:
+
+    >>> _self_jsonify = _class_self_decorate("jsonify")
+    >>>
+    >>> class Foo():
+    >>>    def jsonify(self, func):
+    >>>        print("value = " + str(self.value))
+    >>>        return func
+    >>>    # end def
+    >>>
+    >>>    @_self_jsonify
     >>>    def bar(self):
     >>>        pass
     :param decorator:
