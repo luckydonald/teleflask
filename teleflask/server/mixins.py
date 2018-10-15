@@ -172,9 +172,12 @@ class UpdatesMixin(TeleflaskMixinBase):
                         self.process_result(update, listener(update))  # this will be TeleflaskMixinBase.process_result()
                         break  # stop processing other required_fields combinations
                     # end if
-                except AbortPlease:
+                except AbortPlease as e:
                     logger.debug('Asked to stop processing updates.')
-                    return
+                    if e.return_value:
+                        self.process_result(update, e.return_value)
+                    # end if
+                    return  # not calling super().process_update(update)
                 except Exception:
                     logger.exception("Error executing the update listener {func}.".format(func=listener))
                 # end try
@@ -370,9 +373,12 @@ class MessagesMixin(TeleflaskMixinBase):
                             self.process_result(update, listener(update, update.message))
                             break  # stop processing other required_fields combinations
                         # end if
-                    except AbortPlease:
+                    except AbortPlease as e:
                         logger.debug('Asked to stop processing updates.')
-                        return
+                        if e.return_value:
+                            self.process_result(update, e.return_value)
+                        # end if
+                        return  # not calling super().process_update(update)
                     except Exception:
                         logger.exception("Error executing the update listener {func}.".format(func=listener))
                     # end try
@@ -555,8 +561,11 @@ class BotCommandsMixin(TeleflaskMixinBase):
                 func, exclusive = self.commands[txt]
                 try:
                     self.process_result(update, func(update, None))
-                except AbortPlease:
+                except AbortPlease as e:
                     logger.debug('Asked to stop processing updates.')
+                    if e.return_value:
+                        self.process_result(update, e.return_value)
+                    # end if
                     return  # not calling super().process_update(update)
                 except Exception:
                     logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))
@@ -567,8 +576,11 @@ class BotCommandsMixin(TeleflaskMixinBase):
                 func, exclusive = self.commands[cmd]
                 try:
                     self.process_result(update, func(update, text.strip()))
-                except AbortPlease:
+                except AbortPlease as e:
                     logger.debug('Asked to stop processing updates.')
+                    if e.return_value:
+                        self.process_result(update, e.return_value)
+                    # end if
                     return  # not calling super().process_update(update)
                 except Exception:
                     logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))

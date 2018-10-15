@@ -9,5 +9,12 @@ class AbortPlease(Exception):
     - @bot.on_update
     - @bot.on_message
     - @bot.on_command
+
+    You can store return_value, which is similar to `return return_value`.
     """
-    pass
+
+    def __init__(self, *args, return_value=None, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.return_value = return_value
+    # end def
+# end class
