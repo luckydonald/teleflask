@@ -522,7 +522,7 @@ def FileIDMessage(*args, **kwargs):
 # end def
 
 
-class StickerMessage(FileIDMessage):
+class StickerMessage(DocumentMessage):
     def __init__(self, file_id, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         """
