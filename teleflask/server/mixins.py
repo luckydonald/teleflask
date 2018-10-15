@@ -4,6 +4,7 @@ from collections import OrderedDict
 
 from pytgbot.api_types.receivable.updates import Update
 
+from ..exceptions import AbortPlease
 from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
@@ -171,6 +172,9 @@ class UpdatesMixin(TeleflaskMixinBase):
                         self.process_result(update, listener(update))  # this will be TeleflaskMixinBase.process_result()
                         break  # stop processing other required_fields combinations
                     # end if
+                except AbortPlease:
+                    logger.debug('Asked to stop processing updates.')
+                    return
                 except Exception:
                     logger.exception("Error executing the update listener {func}.".format(func=listener))
                 # end try
@@ -366,6 +370,9 @@ class MessagesMixin(TeleflaskMixinBase):
                             self.process_result(update, listener(update, update.message))
                             break  # stop processing other required_fields combinations
                         # end if
+                    except AbortPlease:
+                        logger.debug('Asked to stop processing updates.')
+                        return
                     except Exception:
                         logger.exception("Error executing the update listener {func}.".format(func=listener))
                     # end try
@@ -546,12 +553,26 @@ class BotCommandsMixin(TeleflaskMixinBase):
             if txt in self.commands:
                 logger.debug("Running command {input} (no text).".format(input=txt))
                 func, exclusive = self.commands[txt]
-                self._execute_command(func, update, txt, None)
+                try:
+                    self.process_result(update, func(update, None))
+                except AbortPlease:
+                    logger.debug('Asked to stop processing updates.')
+                    return  # not calling super().process_update(update)
+                except Exception:
+                    logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))
+                # end try
             elif " " in txt and txt.split(" ")[0] in self.commands:
                 cmd, text = tuple(txt.split(" ", maxsplit=1))
                 logger.debug("Running command {cmd} (text={input!r}).".format(cmd=cmd, input=txt))
                 func, exclusive = self.commands[cmd]
-                self._execute_command(func, update, cmd, text.strip())
+                try:
+                    self.process_result(update, func(update, text.strip()))
+                except AbortPlease:
+                    logger.debug('Asked to stop processing updates.')
+                    return  # not calling super().process_update(update)
+                except Exception:
+                    logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))
+                # end try
             else:
                 logging.debug("No fitting registered command function found.")
                 exclusive = False  # so It won't abort.
@@ -561,8 +582,8 @@ class BotCommandsMixin(TeleflaskMixinBase):
                     "Command function {func!r} ({cmd}) marked exclusive, stopping further processing.".format(
                         func=func, cmd=cmd
                     )
-                ) # not calling super().process_update(update)
-                return
+                )
+                return  # not calling super().process_update(update)
             # end if
         # end if
         super().process_update(update)
@@ -571,14 +592,6 @@ class BotCommandsMixin(TeleflaskMixinBase):
     def do_startup(self):  # pragma: no cover
         super().do_startup()
     # end if
-
-    def _execute_command(self, func, update, command, text):
-        try:
-            self.process_result(update, func(update, text))
-        except Exception:
-            logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=command, func=func))
-        # end try
-    # end def
 
     def _yield_commands(self, command):
         """

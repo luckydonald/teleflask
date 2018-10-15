@@ -60,6 +60,24 @@ bot = Teleflask(API_KEY, app)
 
 ```
 
+#### Stop processing
+Raise `AbortPlease` to stop processing more events in listener functions.
+
+Works with the following decorators:
+
+- `@bot.on_update`
+- `@bot.on_message`
+- `@bot.on_command`
+
+```py
+from teleflask.exceptions import AbortPlease
+
+@bot.on_command('test')
+def cmd_text(update):
+    raise AbortPlease()
+# end if
+```
+
 #### Small changes
 - added `/teleflask_debug/routes` to inspect the registered routes.
 
