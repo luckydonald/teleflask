@@ -12,6 +12,8 @@
 - **removed** `FileIDMessage`. This was a custom `DocumentMessage`, before they could do `file_id`.
     Use `DocumentMessage(file_id="...")` instead.
 
+- **changed** url path of the debug routes to be prefixed by `/teleflask_debug`
+
 ##### This affects:
 
 - parameters of `bot.send_message`, `bot.send_messages`.
@@ -58,6 +60,8 @@ bot = Teleflask(API_KEY, app)
 
 ```
 
+#### Small changes
+- added `/teleflask_debug/routes` to inspect the registered routes.
 
 
 ## v1.0.1 - 2018-07-04

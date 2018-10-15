@@ -14,7 +14,7 @@ from .utilities import _class_self_decorate
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
-_self_jsonify = _class_self_decorate("jsonify")
+_self_jsonify = _class_self_decorate("jsonify")  # calls self.jsonify(...) with the result of the decorated function.
 
 
 class TeleflaskMixinBase(metaclass=abc.ABCMeta):
@@ -484,7 +484,7 @@ class TeleflaskBase(TeleflaskMixinBase):
     # end def
 
     @_self_jsonify
-    def view_hostinfo(self):
+    def view_host_info(self):
         """
         Get infos about your host, like IP etc.
         :return:
@@ -495,6 +495,43 @@ class TeleflaskBase(TeleflaskMixinBase):
         info["host"] = socket.gethostname()
         info["version"] = self.VERSION
         return info
+    # end def
+
+    @_self_jsonify
+    def view_routes_info(self):
+        """
+        Get infos about your host, like IP etc.
+        :return:
+        """
+        from werkzeug.routing import Rule
+        routes = []
+        for rule in self.app.url_map.iter_rules():
+            assert isinstance(rule, Rule)
+            routes.append({
+                'methods': rule.methods,
+                'rule': rule.rule,
+                'endpoint': rule.endpoint,
+                'subdomain': rule.subdomain,
+                'redirect_to': rule.redirect_to,
+                'alias': rule.alias,
+                'host': rule.host,
+                'build_only': rule.build_only
+            })
+        # end for
+        return routes
+    # end def
+
+    @_self_jsonify
+    def view_request(self):
+        """
+        Get infos about your host, like IP etc.
+        :return:
+        """
+        import json
+        from flask import session
+        j = json.loads(json.dumps(session)),
+        # end for
+        return j
     # end def
 
     def get_router(self):
@@ -518,12 +555,13 @@ class TeleflaskBase(TeleflaskMixinBase):
     def setup_routes(self, hookpath, debug_routes=False):
         """
         Sets the pathes to the registered blueprint/app:
-            - "webhook" (self.view_updates) at hookpath
+            - "webhook"  (self.view_updates) at hookpath
         Also, if `debug_routes` is `True`:
-            - "exec" (self.view_exec) at "/exec/API_KEY/<command>"  (`API_KEY` is filled in, `<command>` is any Telegram API command.)
-            - "status" (self.view_status) at "/status"
-            - "hostinfo" (self.view_hostinfo) at "/hostinfo"
-        
+            - "exec"     (self.view_exec)        at "/teleflask_debug/exec/API_KEY/<command>"  (`API_KEY` is replaced, `<command>` is any Telegram API command.)
+            - "status"   (self.view_status)      at "/teleflask_debug/status"
+            - "hostinfo" (self.view_host_info)   at "/teleflask_debug/hostinfo"
+            - "routes"   (self.view_routes_info) at "/teleflask_debug/routes"
+
         :param hookpath: The path where it expects telegram updates to hit the flask app/blueprint.
         :type  hookpath: str
         
@@ -538,9 +576,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         logger.info("Adding webhook route: {url!r}".format(url=hookpath))
         router.add_url_rule(hookpath, endpoint="webhook", view_func=self.view_updates, methods=['POST'])
         if debug_routes:
-            router.add_url_rule("/exec/{api_key}/<command>".format(api_key=self.__api_key), endpoint="exec" , view_func=self.view_exec)
-            router.add_url_rule("/status", endpoint="status", view_func=self.view_status)
-            router.add_url_rule("/hostinfo", endpoint="hostinfo", view_func=self.view_hostinfo)
+            router.add_url_rule("/teleflask_debug/exec/{api_key}/<command>".format(api_key=self.__api_key), endpoint="exec" , view_func=self.view_exec)
+            router.add_url_rule("/teleflask_debug/status", endpoint="status", view_func=self.view_status)
+            router.add_url_rule("/teleflask_debug/routes", endpoint="routes", view_func=self.view_routes_info)
         # end if
     # end def
 
