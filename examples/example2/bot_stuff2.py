@@ -26,8 +26,11 @@ def test(update, text):
     return "You tested with {arg!r}".format(arg=text)
 # end def
 
+
 @bot.on_update()
 def test2(update):
-    return None
+    pass
+# end def
+
 
 app.run(HOST, PORT, True)

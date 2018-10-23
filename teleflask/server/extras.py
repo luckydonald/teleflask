@@ -117,31 +117,7 @@ class PollingTeleflask(Teleflask):
         We need to unset a telegram webhook if any.
         """
         # assert isinstance(self.bot, Bot)
-        existing_webhook = self.bot.get_webhook_info()
 
-        if self._return_python_objects:
-            from pytgbot.api_types.receivable import WebhookInfo
-            assert isinstance(existing_webhook, WebhookInfo)
-            webhook_url = existing_webhook.url
-            webhook_meta = existing_webhook.to_array()
-        else:
-            webhook_url = existing_webhook["result"]["url"]
-            webhook_meta = existing_webhook["result"]
-        # end def
-        del existing_webhook
-        logger.info("Last webhook pointed to {url!r}.\nMetadata: {hook}".format(
-            url=self.hide_api_key(webhook_url), hook=self.hide_api_key("{!r}".format(webhook_meta))
-        ))
-        if webhook_url == "":
-            logger.info("Webhook unset correctly. No need to change.")
-        else:
-            if not self.app.config.get("DISABLE_SETTING_TELEGRAM_WEBHOOK", False):
-                logger.info("Unsetting webhook")
-                logger.debug(self.bot.delete_webhook())
-            else:
-                logger.info("Would unset webhook, but action is disabled by DISABLE_SETTING_TELEGRAM_WEBHOOK config.")
-            # end if
-        # end if
     # end def
 
     def do_startup(self):
