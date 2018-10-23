@@ -95,7 +95,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         self.app = None  # will be filled out by self.init_app(...)
         self.blueprint = None  # will be filled out by self.init_app(...)
         self._return_python_objects = return_python_objects
-        self._webhook_url = None  # will be filled out by self.calculate_webhook_url() in self.init_app(...)
+        self.__webhook_url = None  # will be filled out by self.calculate_webhook_url() in self.init_app(...)
         self.hostname = hostname  # e.g. "example.com:443"
         self.hostpath = hostpath
         self.hookpath = hookpath
@@ -116,7 +116,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         if not self._bot:  # so you can manually set it before calling `init_app(...)`,
             # e.g. a mocking bot class for unit tests
-            self._bot = Bot(self.__api_key, return_python_objects=self._return_python_objects)
+            self._bot = Bot(self._api_key, return_python_objects=self._return_python_objects)
         elif self._bot.return_python_objects != self._return_python_objects:
             # we don't have the same setting as the given one
             raise ValueError("The already set bot has return_python_objects {given}, but we have {our}".format(
@@ -157,9 +157,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         self.app = app
         self.blueprint = blueprint
         self.init_bot()
-        hookpath, self._webhook_url = self.calculate_webhook_url(hostname=self.hostname, hostpath=self.hostpath, hookpath=self.hookpath)
+        hookpath, self.__webhook_url = self.calculate_webhook_url(hostname=self.hostname, hostpath=self.hostpath, hookpath=self.hookpath)
         self.setup_routes(hookpath=hookpath, debug_routes=debug_routes)
-        self.set_webhook()  # this will set the webhook in the bot api.
+        self.set_webhook_telegram()  # this will set the webhook in the bot api.
         self.do_startup()  # this calls the startup listeners of extending classes.
     # end def
 
@@ -240,7 +240,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         if not hookpath.startswith("/"):
             raise ValueError("hookpath must start with a slash: {value!r}".format(value=hostpath))
         # end def
-        hookpath = hookpath.format(API_KEY=self.__api_key)
+        hookpath = hookpath.format(API_KEY=self._api_key)
         if not hostpath:
             logger.info("URL_PATH is not set.")
         webhook_url = "https://{hostname}{hostpath}{hookpath}".format(hostname=hostname, hostpath=hostpath, hookpath=hookpath)
@@ -273,11 +273,16 @@ class TeleflaskBase(TeleflaskMixinBase):
     # end def
 
     @property
-    def webhook_url(self):
-        return self._webhook_url
+    def _webhook_url(self):
+        return self.__webhook_url
     # end def
 
-    def set_webhook(self):
+    @property
+    def _api_key(self):
+        return self.__api_key
+    # end def
+
+    def set_webhook_telegram(self):
         """
         Sets the telegram webhook.
         Checks Telegram if there is a webhook set, and if it needs to be changed. 
@@ -300,14 +305,14 @@ class TeleflaskBase(TeleflaskMixinBase):
         logger.info("Last webhook pointed to {url!r}.\nMetadata: {hook}".format(
             url=self.hide_api_key(webhook_url), hook=self.hide_api_key("{!r}".format(webhook_meta))
             ))
-        if webhook_url == self.webhook_url:
+        if webhook_url == self._webhook_url:
             logger.info("Webhook set correctly. No need to change.")
         else:
             if not self.app.config.get("DISABLE_SETTING_TELEGRAM_WEBHOOK", False):
-                logger.info("Setting webhook to {url}".format(url=self.hide_api_key(self.webhook_url)))
-                logger.debug(self.bot.set_webhook(url=self.webhook_url))
+                logger.info("Setting webhook to {url}".format(url=self.hide_api_key(self._webhook_url)))
+                logger.debug(self.bot.set_webhook(url=self._webhook_url))
             else:
-                logger.info("Would set webhook to {url!r}, but is disabled by DISABLE_SETTING_TELEGRAM_WEBHOOK config.".format(url=self.hide_api_key(self.webhook_url)))
+                logger.info("Would set webhook to {url!r}, but action is disabled by DISABLE_SETTING_TELEGRAM_WEBHOOK config.".format(url=self.hide_api_key(self._webhook_url)))
             # end if
         # end if
     # end def
@@ -316,7 +321,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         This code is executed after server boot.
         
-        Sets the telegram webhook (see :meth:`set_webhook(self)`)
+        Sets the telegram webhook (see :meth:`set_webhook_telegram(self)`)
         and calls `super().do_setup()` for the superclass (e.g. other mixins)
 
         :return:
@@ -336,7 +341,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         if not isinstance(string, str):
             string = str(string)
         # end if
-        return string.replace(self.__api_key, "<API_KEY>")
+        return string.replace(self._api_key, "<API_KEY>")
     # end def
 
     def jsonify(self, func):
@@ -424,7 +429,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         :param command: the actual command
         :return:
         """
-        if api_key != self.__api_key:
+        if api_key != self._api_key:
             error_msg = "Wrong API key: {wrong_key!r}".format(wrong_key=api_key)
             logger.warning(error_msg)
             return {"status": "error", "message": error_msg, "error_code": 403}, 403
@@ -565,7 +570,7 @@ class TeleflaskBase(TeleflaskMixinBase):
         :param hookpath: The path where it expects telegram updates to hit the flask app/blueprint.
         :type  hookpath: str
         
-        :param debug_paths: Add several debug pathes.
+        :param debug_routes: Add several debug paths.
         :type  debug_routes: bool
         """
         # Todo: Find out how to handle blueprints
@@ -573,10 +578,13 @@ class TeleflaskBase(TeleflaskMixinBase):
             raise ValueError("No app (self.app) or Blueprint (self.blueprint) was set.")
         # end if
         router = self.get_router()
-        logger.info("Adding webhook route: {url!r}".format(url=hookpath))
-        router.add_url_rule(hookpath, endpoint="webhook", view_func=self.view_updates, methods=['POST'])
+        if self.disable_setting_webhook:
+            logger.info("Adding webhook route: {url!r}".format(url=hookpath))
+            assert hookpath
+            router.add_url_rule(hookpath, endpoint="webhook", view_func=self.view_updates, methods=['POST'])
         if debug_routes:
-            router.add_url_rule("/teleflask_debug/exec/{api_key}/<command>".format(api_key=self.__api_key), endpoint="exec" , view_func=self.view_exec)
+            logger.info("Adding debug routes.".format(url=hookpath))
+            router.add_url_rule("/teleflask_debug/exec/{api_key}/<command>".format(api_key=self._api_key), endpoint="exec", view_func=self.view_exec)
             router.add_url_rule("/teleflask_debug/status", endpoint="status", view_func=self.view_status)
             router.add_url_rule("/teleflask_debug/routes", endpoint="routes", view_func=self.view_routes_info)
         # end if

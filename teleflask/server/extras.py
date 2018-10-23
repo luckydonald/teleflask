@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+import os
+
 from .base import TeleflaskBase
 from .mixins import StartupMixin, BotCommandsMixin, UpdatesMixin, MessagesMixin, RegisterBlueprintsMixin
+from luckydonaldUtils.logger import logging
 
 __author__ = 'luckydonald'
 __all__ = ["Teleflask"]
+logger = logging.getLogger(__name__)
 
 
 class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBase):
@@ -86,5 +90,75 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
         super().__init__(api_key, app, blueprint, hostname, hostpath, hookpath, debug_routes, disable_setting_webhook,
                          return_python_objects)
 
+    # end def
+# end class
+
+
+class PollingTeleflask(Teleflask):
+    def __init__(self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
+                 debug_routes=False, disable_setting_webhook=True, return_python_objects=True, https=True):
+        if not disable_setting_webhook:
+            logger.warn(
+                'You are using the {clazz} class to use poll based updates for debugging, but requested creating a '
+                'webhook route (disable_setting_webhook is set to False).'.format(
+                clazz=self.__class__.__name__
+            ))
+        # end if
+        self.https = https
+        super().__init__(api_key, app, blueprint, hostname, hostpath, hookpath, debug_routes, disable_setting_webhook,
+                         return_python_objects)
+
+    def calculate_webhook_url(self, hostname=None, hostpath=None, hookpath="/income/{API_KEY}"):
+        return super().calculate_webhook_url(hostname if hostname else os.getenv('URL_HOSTNAME', 'localhost'), hostpath, hookpath)
+    # end def
+
+    def set_webhook_telegram(self):
+        """
+        We need to unset a telegram webhook if any.
+        """
+        # assert isinstance(self.bot, Bot)
+        existing_webhook = self.bot.get_webhook_info()
+
+        if self._return_python_objects:
+            from pytgbot.api_types.receivable import WebhookInfo
+            assert isinstance(existing_webhook, WebhookInfo)
+            webhook_url = existing_webhook.url
+            webhook_meta = existing_webhook.to_array()
+        else:
+            webhook_url = existing_webhook["result"]["url"]
+            webhook_meta = existing_webhook["result"]
+        # end def
+        del existing_webhook
+        logger.info("Last webhook pointed to {url!r}.\nMetadata: {hook}".format(
+            url=self.hide_api_key(webhook_url), hook=self.hide_api_key("{!r}".format(webhook_meta))
+        ))
+        if webhook_url == "":
+            logger.info("Webhook unset correctly. No need to change.")
+        else:
+            if not self.app.config.get("DISABLE_SETTING_TELEGRAM_WEBHOOK", False):
+                logger.info("Unsetting webhook")
+                logger.debug(self.bot.delete_webhook())
+            else:
+                logger.info("Would unset webhook, but action is disabled by DISABLE_SETTING_TELEGRAM_WEBHOOK config.")
+            # end if
+        # end if
+    # end def
+
+    def do_startup(self):
+        """
+        Uses the get updates method to run.
+        Checks Telegram if there is a webhook set, and if it needs to be changed.
+
+        :return:
+        """
+        from flask import url_for
+        from ..proxy import proxy_telegram
+        from multiprocessing import Process
+        global telegram_proxy_process
+        telegram_proxy_process = Process(target=proxy_telegram, args=(), kwargs=dict(
+            api_key=self._api_key, https=self.https, host=self.hostname, hookpath=self.hookpath
+        ))
+        telegram_proxy_process.start()
+        super().do_startup()
     # end def
 # end class
