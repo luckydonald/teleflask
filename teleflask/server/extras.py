@@ -116,8 +116,7 @@ class PollingTeleflask(Teleflask):
         """
         We need to unset a telegram webhook if any.
         """
-        # assert isinstance(self.bot, Bot)
-
+        pass
     # end def
 
     def do_startup(self):

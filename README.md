@@ -22,6 +22,34 @@ If you want to try it out already, run
 pip install -e git://github.com/luckydonald/teleflask.git@v2.0.0.dev13#egg=teleflask
 ```
 
+#### Soon: Proxy
+
+Added proxy script to test webhooks in local environments
+without exposing you to the internet.
+
+###### CLI proxy:
+
+```bash
+usage python -m teleflask.proxy [-h|--help] [--https] [--hookpath HOOKPATH] api_key host port
+
+Pulls updates from telegram and shoves them into your app.
+
+positional arguments:
+  api_key              api key for the telegram API to use.
+  host                 turn on https on the url
+  port                 the port number
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --https              turn on https on the url
+  --hookpath HOOKPATH  the path for the webhook (default: "/income/{API_KEY}")
+```
+
+```bash
+python -m teleflask.proxy "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" localhost 8080
+```
+
+
 ## Usage
 
 ### Initalize

@@ -78,6 +78,48 @@ def cmd_text(update):
 # end if
 ```
 
+#### Proxy
+
+Added proxy script to test webhooks in local environments
+without exposing you to the internet.
+
+###### CLI proxy:
+
+```bash
+usage python -m teleflask.proxy [-h|--help] [--https] [--hookpath HOOKPATH] api_key host port
+
+Pulls updates from telegram and shoves them into your app.
+
+positional arguments:
+  api_key              api key for the telegram API to use.
+  host                 turn on https on the url
+  port                 the port number
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --https              turn on https on the url
+  --hookpath HOOKPATH  the path for the webhook (default: "/income/{API_KEY}")
+```
+
+```bash
+python -m teleflask.proxy "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" localhost 8080
+```
+
+###### In Project:
+Note, this just launches the aforementioned script, in a background process directly.
+Please don't use it.
+
+```py
+from teleflask.server.extras import PollingTeleflask
+
+app = Flask(__name__)
+bot = PollingTeleflask(API_KEY, https=False, hostname="localhost:8080", debug_routes=True)
+bot.init_app(app)
+
+app.run("localhost", 8080, debug=True)
+```
+
+
 #### Small changes
 - added `/teleflask_debug/routes` to inspect the registered routes.
 

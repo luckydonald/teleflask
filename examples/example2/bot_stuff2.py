@@ -33,4 +33,4 @@ def test2(update):
 # end def
 
 
-app.run(HOST, PORT, True)
+app.run(HOST, PORT, debug=True)
