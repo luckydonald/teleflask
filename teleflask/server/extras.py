@@ -96,7 +96,9 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
 
 class PollingTeleflask(Teleflask):
     def __init__(self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
-                 debug_routes=False, disable_setting_webhook=True, return_python_objects=True, https=True):
+                 debug_routes=False, disable_setting_webhook=True, return_python_objects=True, https=True, start_process=True):
+        # https: if we should use https for our host.
+        # start_process: If the proxy process should be started.
         if not disable_setting_webhook:
             logger.warn(
                 'You are using the {clazz} class to use poll based updates for debugging, but requested creating a '
@@ -105,6 +107,7 @@ class PollingTeleflask(Teleflask):
             ))
         # end if
         self.https = https
+        self.start_process = start_process
         super().__init__(api_key, app, blueprint, hostname, hostpath, hookpath, debug_routes, disable_setting_webhook,
                          return_python_objects)
 
@@ -126,7 +129,13 @@ class PollingTeleflask(Teleflask):
 
         :return:
         """
-        from flask import url_for
+        if self.start_process:
+            self._start_proxy_process()
+        # end def
+        super().do_startup()
+    # end def
+
+    def _start_proxy_process(self):
         from ..proxy import proxy_telegram
         from multiprocessing import Process
         global telegram_proxy_process
@@ -134,6 +143,5 @@ class PollingTeleflask(Teleflask):
             api_key=self._api_key, https=self.https, host=self.hostname, hookpath=self.hookpath
         ))
         telegram_proxy_process.start()
-        super().do_startup()
     # end def
 # end class
