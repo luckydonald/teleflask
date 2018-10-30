@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from exceptions import AbortProcessingPlease
+
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
@@ -46,4 +48,18 @@ def _class_self_decorate(decorator_name):
         return self_extractor
     # end def
     return func_extractor
+# end def
+
+
+def abort_processing(func):
+    """
+    Wraps a function to automatically raise a `AbortProcessingPlease` exception after execution,
+    containing the returned value of the function automatically.
+    """
+    def abort_inner(*args, **kwargs):
+        return_value = func(*args, **kwargs)
+        raise AbortProcessingPlease(return_value=return_value)
+    # end def
+
+    return abort_inner
 # end def

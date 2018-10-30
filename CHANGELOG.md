@@ -61,7 +61,8 @@ bot = Teleflask(API_KEY, app)
 ```
 
 #### Stop processing
-Raise `AbortPlease` to stop processing more events in listener functions.
+Raise `AbortProcessingPlease` to stop processing the current Update.
+That means that it will not execute the rest of the registered functions matching the current update.
 
 Works with the following decorators:
 
@@ -70,44 +71,91 @@ Works with the following decorators:
 - `@bot.on_command`
 
 ```py
-from teleflask.exceptions import AbortPlease
+from teleflask.exceptions import AbortProcessingPlease
 
 @bot.on_command('test')
-def cmd_text(update):
-    raise AbortPlease()
+def cmd_test(update):
+    raise AbortProcessingPlease(return_value="Test succesfull.")
 # end if
 ```
 
+You can also use the `@abort_processing` decorator, it will does that automatically for you.
+```py
+from teleflask import abort_processing
+
+@bot.on_command('test')
+@abort_processing
+def cmd_test(update):
+    return "Test succesfull."
+# end if
+```
+
+
+###### Example
+
+```py
+from teleflask.exceptions import AbortProcessingPlease
+from teleflask import abort_processing
+
+@bot.on_command('help')
+@abort_processing  # Show help, don't execute other stuff
+def cmd_text(update, text):
+    return "Here would be help for you"
+# end if
+
+
+@bot.on_command('set_name')
+def cmd_text(update, text):
+    # we expect a parameter
+    if text:
+        name = text
+        raise AbortProcessingPlease(return_value='Thanks, ' + name)
+    # continue normal listener execution, which will call
+    # the `fallback(...)` function below.
+# end if
+
+
+@bot.on_update
+def fallback(update):
+    return "You send me a command I didn't understood..."
+# end if
+```
+
+
 #### Proxy
 
-Added proxy script to test webhooks in local environments
-without exposing you to the internet.
+Added proxy script to test webhooks in local environments without
+exposing your computer to the internet.
+
+After launch it continuously polls the telegram API for updates.
+As soon as there are any, it sends those to your webhook.
 
 ###### CLI proxy:
 
 ```bash
-usage python -m teleflask.proxy [-h|--help] [--https] [--hookpath HOOKPATH] api_key host port
+usage: python -m teleflask.proxy [-h|--help] [--https] [--hookpath hookpath] API_KEY HOST PORT
 
 Pulls updates from telegram and shoves them into your app.
 
 positional arguments:
-  api_key              api key for the telegram API to use.
-  host                 turn on https on the url
-  port                 the port number
+  API_KEY              api key for the telegram API to use.
+  HOST                 turn on https on the url
+  PORT                 the port number
 
 optional arguments:
   -h, --help           show this help message and exit
   --https              turn on https on the url
-  --hookpath HOOKPATH  the path for the webhook (default: "/income/{API_KEY}")
+  --hookpath hookpath  the path for the webhook (default: '/income/{API_KEY}')
 ```
 
 ```bash
-python -m teleflask.proxy "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" localhost 8080
+python -m teleflask.proxy '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11' localhost 8080
 ```
 
 ###### In Project:
+
 Note, this just launches the aforementioned script, in a background process directly.
-Please don't use it.
+**Please don't use it**. It is not tested if it works. Use the CLI script.
 
 ```py
 from teleflask.server.extras import PollingTeleflask
