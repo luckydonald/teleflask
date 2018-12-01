@@ -23,7 +23,7 @@ from pytgbot.exceptions import TgApiServerException
 __all__ = [
     "TypingMessage", "HTMLMessage", "DocumentMessage", "ImageMessage", "ForwardMessage",
     "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
-    "PhotoMessage", "StickerMessage", "MediaGroupMessage"
+    "PhotoMessage", "StickerMessage", "MediaGroupMessage", "AudioMessage",
 ]
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
@@ -194,9 +194,9 @@ class MessageWithReplies(Message):
         """
         Sends a MessageWithReplies.
         First sends the `self.top_message`, and then the `self.reply_messages`
-        
+
         Will return a list with all the results.
-        
+
         :return: list of all results. `top_message` first, followed by the `reply_messages`.
         :rtype: list
         """
@@ -251,7 +251,8 @@ class TypingMessage(Message):
 
 
 class DocumentMessage(Message):
-    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None,
+                 caption=None, parse_mode=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
                  reply_markup=None, disable_notification=False):
         """
         You can specify a `file_id` to re-send existing content, already on telegram's servers.
@@ -277,6 +278,9 @@ class DocumentMessage(Message):
 
         :param caption:
         :type  caption: str|None
+
+        :param parse_mode:
+        :type  parse_mode: str|None
 
         :param receiver:
         :param reply_id:
@@ -312,6 +316,7 @@ class DocumentMessage(Message):
 
         # and the rest of the metadata
         self.caption=caption
+        self.parse_mode=parse_mode
         self.reply_markup = reply_markup
         self.disable_notification = disable_notification
     # end def __init__
@@ -364,15 +369,20 @@ class DocumentMessage(Message):
         # end if
         self.prepare_file()
         try:
-            return sender.send_document(
-                receiver, self.file, caption=self.caption, reply_to_message_id=reply_id, reply_markup=self.reply_markup,
-                disable_notification=self.disable_notification
-            )
+            return self.actual_sending(sender, receiver, reply_id)
         except TgApiServerException as e:
             should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
-            # end try
-            # end def send
+        # end try
+    # end def send
+
+    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+        return sender.send_document(
+            receiver, self.file, caption=self.caption, parse_mode=self.parse_mode,
+            reply_to_message_id=reply_id, reply_markup=self.reply_markup,
+            disable_notification=self.disable_notification
+        )
+    # end def
 # end class
 
 
@@ -425,6 +435,31 @@ class PhotoMessage(DocumentMessage):
         # end try
     # end def send
 # end class PhotoMessage
+
+
+class StickerMessage(DocumentMessage):
+    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
+                 reply_markup=None, disable_notification=False):
+        """
+        :param file_id: the ID of the file
+        :param receiver:
+        :param reply_id:
+        :param reply_markup:
+        :param disable_notification:
+        """
+        super().__init__(
+            file_id, caption=None, receiver=receiver, reply_id=reply_id, reply_markup=reply_markup,
+            disable_notification=disable_notification
+        )
+    # end def __init__
+
+    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+        return sender.send_sticker(
+            receiver, self.file_id, reply_to_message_id=reply_id,
+            reply_markup=self.reply_markup, disable_notification=self.disable_notification
+        )
+    # end def
+# end class
 
 
 class MediaGroupMessage(Message):
@@ -522,9 +557,14 @@ def FileIDMessage(*args, **kwargs):
 # end def
 
 
-class StickerMessage(DocumentMessage):
-    def __init__(self, file_id, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False):
+class AudioMessage(DocumentMessage):
+    """
+    send an audio file
+    """
+    def __init__(
+        self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None,
+        caption=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID, reply_markup=None, disable_notification=False
+    ):
         """
         :param file_id: the ID of the file
         :param receiver:
@@ -533,14 +573,16 @@ class StickerMessage(DocumentMessage):
         :param disable_notification:
         """
         super().__init__(
-            file_id, caption=None, receiver=receiver, reply_id=reply_id, reply_markup=reply_markup,
-            disable_notification=disable_notification
-        )
+            file_id=file_id, file_path=file_path, file_url=file_url, file_content=file_content, file_mime=file_mime,
+            caption=caption,
+            receiver=receiver, reply_id=reply_id, reply_markup=reply_markup, disable_notification=disable_notification
+        )  # let DocumentMessage handle this
     # end def __init__
 
     def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
-        return sender.send_sticker(
-            receiver, self.file_id, reply_to_message_id=reply_id,
+        return sender.send_audio(
+            chat_id=receiver, audio=self.file_id, reply_to_message_id=reply_id,
+            caption=self.caption, parse_mode=self.parse_mode,
             reply_markup=self.reply_markup, disable_notification=self.disable_notification
         )
     # end def
