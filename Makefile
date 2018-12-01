@@ -1,3 +1,3 @@
 upload:
 	python setup.py sdist upload -r pypi
-	git push
+	git push --follow-tags
