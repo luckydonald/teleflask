@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from exceptions import AbortProcessingPlease
+from ..exceptions import AbortProcessingPlease
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
