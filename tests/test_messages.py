@@ -8,8 +8,7 @@ from pytgbot.bot import Bot as APIBot
 from luckydonaldUtils.logger import logging
 
 from somewhere import API_KEY, TEST_CHAT
-from teleflask.messages import MediaGroupMessage, PhotoMessage, FileIDMessage
-
+from teleflask.messages import MediaGroupMessage, PhotoMessage, FileIDMessage, StickerMessage
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
@@ -24,6 +23,7 @@ pic1 = 'https://derpicdn.net/img/view/2012/1/22/1382.jpg'
 pic2 = 'https://derpicdn.net/img/view/2016/2/3/1079240.png'
 tmb1 = 'https://derpicdn.net/img/2017/7/21/1491832/thumb.jpeg'
 vid1 = 'https://derpicdn.net/img/view/2016/12/21/1322277.mp4'
+stk1 = 'CAADAgAD8wkAAgKLowABpAz7kZfM7jcC'
 
 
 class MessagesTestCase(unittest.TestCase):
@@ -146,6 +146,19 @@ class MessageTypesRealSendingTest(unittest.TestCase):
         self.assertIsNotNone(msg)
         self.messages.append(msg)
         self.messages.append(self.bot.send_message(TEST_CHAT, 'done with unittest {}.'.format(self.id())))
+    # end def
+
+    def test_sticker(self):
+        sticker_msg = self.bot.send_sticker(TEST_CHAT, sticker=stk1)
+        self.messages.append(sticker_msg)
+
+        m = StickerMessage(file_id=stk1, disable_notification=True)
+
+        msg = m.send(self.bot, TEST_CHAT, self.reply_to)
+        self.assertIsNotNone(msg)
+        self.messages.append(msg)
+        self.messages.append(self.bot.send_message(TEST_CHAT, 'done with unittest {}.'.format(self.id())))
+        print('lel')
     # end def
 
     #
