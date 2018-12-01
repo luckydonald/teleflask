@@ -13,6 +13,7 @@
     Use `DocumentMessage(file_id="...")` instead.
 
 - **changed** url path of the debug routes to be prefixed by `/teleflask_debug`
+- **renamed** app config `DISABLE_SETTING_TELEGRAM_WEBHOOK` to `DISABLE_SETTING_WEBHOOK_TELEGRAM`,
 
 ##### This affects:
 
@@ -27,8 +28,12 @@
     Use `Teleflask` instead.
 - Added `inline_query` peer support to automatic replying.
 - Improved automatic replying to work on updates with `callback_query`.
-- Added new `GameMessage` and `MediaGroupMessage` as automatic reply type.
+- Added new `AudioMessage`, `GameMessage` and `MediaGroupMessage` as automatic reply type.
 - Now requires `pytgbot >= 4.0`.
+- Class constructor parameter `disable_setting_webhook` to `disable_setting_webhook_telegram` or `disable_setting_webhook_route`.
+- Fixed `disable_setting_webhook_route` class constructor parameter
+- Added `disable_setting_webhook_telegram` class constructor parameter
+- Setting `disable_setting_webhook_telegram` or `disable_setting_webhook_route` to something else then `None` will override any `DISABLE_SETTING_WEBHOOK_TELEGRAM` or `DISABLE_SETTING_WEBHOOK_ROUTE` app config values.
 
 #### Added **blueprint** mechanics:
 
