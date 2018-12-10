@@ -163,4 +163,16 @@ bot.bot.send_message('@luckydonald', 'It works :D')  # please don't spam me :D
 ```
 
 
+# Deployment
+This section is for myself, as I always forget.
+You can ignore the deployment section.
 
+### Development release
+
+#### Increment <code>.dev<i>XYZ</i></code>
+
+```bash
+bump2version dev
+# check that tag and every replacement is correct
+make upload
+```
