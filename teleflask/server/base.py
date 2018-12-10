@@ -115,13 +115,29 @@ class TeleflaskBase(TeleflaskMixinBase):
         self.hookpath = hookpath
 
         if disable_setting_webhook_route is None:
-            self.disable_setting_webhook_route = self.app.config.get("DISABLE_SETTING_WEBHOOK_ROUTE", False)
+            try:
+                self.disable_setting_webhook_route = self.app.config["DISABLE_SETTING_WEBHOOK_ROUTE"]
+            except (AttributeError, KeyError):
+                logger.debug(
+                    'disable_setting_webhook_route is None and app is None or app has no DISABLE_SETTING_WEBHOOK_ROUTE'
+                    ' config. Assuming False.'
+                )
+                self.disable_setting_webhook_route = False
+            # end try
         else:
             self.disable_setting_webhook_route = disable_setting_webhook_route
         # end if
 
         if disable_setting_webhook_telegram is None:
-            self.disable_setting_webhook_telegram = self.app.config.get("DISABLE_SETTING_WEBHOOK_TELEGRAM", False)
+            try:
+                self.disable_setting_webhook_telegram = self.app.config["DISABLE_SETTING_WEBHOOK_TELEGRAM"]
+            except (AttributeError, KeyError):
+                logger.debug(
+                    'disable_setting_webhook_telegram is None and app is None or app has no DISABLE_SETTING_WEBHOOK_TELEGRAM'
+                    ' config. Assuming False.'
+                )
+                self.disable_setting_webhook_telegram = False
+            # end try
         else:
             self.disable_setting_webhook_telegram = disable_setting_webhook_telegram
         # end if
