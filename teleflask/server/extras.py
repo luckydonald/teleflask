@@ -15,14 +15,14 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
     This is the full package, including all provided mixins.
 
     You can use:
-    
+
         Startup:
             - `app.add_startup_listener` to let the given function be called on server/bot startup
             - `app.remove_startup_listener` to remove the given function again
             - `@app.on_startup` decorator which does the same as add_startup_listener.
             See :class:`teleflask.mixins.StartupMixin` for complete information.
 
-        Commands: 
+        Commands:
             - `app.add_command` to add command functions
             - `app.remove_command` to remove them again.
             - `@app.command("command")` decorator as alias to `add_command`
@@ -34,7 +34,7 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
             - `app.remove_message_listener` to remove them again.
             - `@app.on_message` decorator as alias to `add_message_listener`
             See :class:`teleflask.mixins.MessagesMixin` for complete information.
-     
+
         Updates:
             - `app.add_update_listener` to add functions to be called on incoming telegram updates.
             - `app.remove_update_listener` to remove them again.
@@ -42,18 +42,21 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
             See :class:`teleflask.mixins.UpdatesMixin` for complete information.
 
     Execution order:
-    
-        It will first check for commands (`@command`), then for messages (`@on_message`) and 
+
+        It will first check for commands (`@command`), then for messages (`@on_message`) and
         finally for update listeners (`@on_update`)
 
     Functionality is separated into mixin classes. This means you can plug together a class with just the functions you need.
-    But we also provide some ready-build cases:    
+    But we also provide some ready-build cases:
         :class:`teleflask.extras.TeleflaskCommands`, :class:`teleflask.extras.TeleflaskMessages`,
         :class:`teleflask.extras.TeleflaskUpdates` and :class:`teleflask.extras.TeleflaskStartup`.
     """
 
-    def __init__(self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
-                 debug_routes=False, disable_setting_webhook=False, return_python_objects=True):
+    def __init__(
+        self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
+        debug_routes=False, disable_setting_webhook_telegram=None, disable_setting_webhook_route=None,
+        return_python_objects=True
+    ):
         """
         A new Teleflask object.
 
@@ -83,12 +86,22 @@ class Teleflask(StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, Reg
                         Also configurable via environment variables. See calculate_webhook_url()
         :param debug_routes: Add extra url endpoints usefull for debugging. See setup_routes(...)
 
-        :param disable_setting_webhook: Disable updating the webhook when starting. Useful for unit tests.
+        :param disable_setting_webhook_telegram: Disable updating the telegram webhook when starting.
+                                                 Useful for unit tests. Defaults to the app's config
+                                                 DISABLE_SETTING_ROUTE_WEBHOOK or False.
+        :type  disable_setting_webhook_telegram: None|bool
+
+        :param disable_setting_webhook_route: Disable creation of the webhook route.
+                                              Usefull if you don't need to listen for incomming events.
+        :type  disable_setting_webhook_route: None|bool
 
         :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
         """
-        super().__init__(api_key, app, blueprint, hostname, hostpath, hookpath, debug_routes, disable_setting_webhook,
-                         return_python_objects)
+        super().__init__(
+            api_key=api_key, app=app, blueprint=blueprint, hostname=hostname, hookpath=hookpath,
+            debug_routes=debug_routes, disable_setting_webhook_telegram=disable_setting_webhook_telegram,
+            disable_setting_webhook_route=disable_setting_webhook_route, return_python_objects=return_python_objects,
+        )
 
     # end def
 # end class
