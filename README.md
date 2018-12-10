@@ -15,11 +15,15 @@ pip install teleflask
 
 Currently the source version (here on Github) is a work in progress version.
 Great features are to come, including a Blueprint feature.
-It is currently at version 2.0.0.dev20, and will be `2`.`0`.`0` when released.
+It is currently at version `2.0.0.dev20`, and will be `2`.`0`.`0` when released.
 
 If you want to try it out already, run
 ```bash
 pip install -e git://github.com/luckydonald/teleflask.git@v2.0.0.dev20#egg=teleflask
+```
+Sometimes it might additionally be available on PyPI
+```bash
+pip install teleflask==2.0.0.dev20
 ```
 
 #### Soon: Proxy
