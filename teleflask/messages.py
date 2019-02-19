@@ -5,6 +5,9 @@ import magic
 import logging
 import backoff
 import requests
+import mimetypes
+
+from urllib.parse import urlparse
 
 from DictObject import DictObject
 from luckydonaldUtils.encoding import unicode_type
@@ -251,17 +254,22 @@ class TypingMessage(Message):
 
 
 class DocumentMessage(Message):
-    def __init__(self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None,
-                 caption=None, parse_mode=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID,
-                 reply_markup=None, disable_notification=False):
+    def __init__(
+        self, file_id=None, file_path=None, file_url=None, file_content=None, file_mime=None, file=None,
+        thumb=None,
+        caption=None, parse_mode=None, receiver=None, reply_id=DEFAULT_MESSAGE_ID, reply_markup=None,
+        disable_notification=False
+    ):
         """
-        You can specify a `file_id` to re-send existing content, already on telegram's servers.
-        You can specify a `file_url` to download it. It will get mime and filename from there.
-        You can specify a `file_path` to load it from disk. It will get mime and filename from there.
-        You can specify a `file_content` and a `file_path`. It will use the mime from the content, and get the filename part from the path.
-        You can specify a `file_content` and a `file_url`.  It will use the mime from the content, and get the filename part from the url.
-        You can specify a `file_content`, the `file_mime` and a `file_path`. It will use the mime from as in `file_mime`, and get the filename part from the path.
-        You can specify a `file_content`, the `file_mime` and a `file_url`.  It will use the mime from as in `file_mime`, and get the filename part from the url.
+        - You can specify a `file_id` to re-send existing content, already on telegram's servers.
+        - You can specify a `file_url` to download it. It will get mime and filename from there.
+        - You can specify a `file_path` to load it from disk. It will get mime and filename from there.
+        - You can specify a `file_content` and a `file_path`. It will use the mime from the content, and get the filename part from the path.
+        - You can specify a `file_content` and a `file_url`.  It will use the mime from the content, and get the filename part from the url.
+        - You can specify a `file_content`, the `file_mime` and a `file_path`. It will use the mime from as in `file_mime`, and get the filename part from the path.
+        - You can specify a `file_content`, the `file_mime` and a `file_url`.  It will use the mime from as in `file_mime`, and get the filename part from the url.
+        - You can specify a `file` to provide an prepared :class:`InputFile` instance.
+
 
 
         :param file_id:
@@ -288,7 +296,10 @@ class DocumentMessage(Message):
         :param disable_notification:
         """
         super().__init__(receiver=receiver, reply_id=reply_id)
-        if not file_id:
+        assert_type_or_raise(file, None, InputFile, parameter_name='file')
+        assert_type_or_raise(file_id, None, str, parameter_name='file_id')
+        assert_type_or_raise(file_url, None, str, parameter_name='file_url')
+        if not file_id and not file:
             if not file_path and not file_url and not file_content:
                 raise AttributeError("Neither URL (file_url) nor local path (file_path) nor any binary data (file_content) given.")
             if file_path and not file_content and not file_url and not os.path.isfile(file_path):
@@ -305,6 +316,7 @@ class DocumentMessage(Message):
                 # THINKABOUT: try to use the file, and if it does not exist, download freshly. Like caching.
             # end if
         # end if
+        self.file_input = file
         self.file_id = file_id
         self.file_content = file_content
         self.file_path = file_path
@@ -327,7 +339,48 @@ class DocumentMessage(Message):
         or a fitting sublcass (:class:`InputFileFromDisk`, :class:`InputFileFromURL`)
         :return: Nothing
         """
-        if self.file_id:
+        if self.file_input:
+            self.file = self.file_input
+        elif self.file_id:
+            self.file = self.file_id
+        elif self.file_content:
+            file_name = "file"
+            file_suffix = ".blob"
+            if self.file_path:
+                file_name = os.path.basename(os.path.normpath(self.file_path))  # http://stackoverflow.com/a/3925147
+                file_name, file_suffix = os.path.splitext(file_name)  # http://stackoverflow.com/a/541394/3423324
+            elif self.file_url:
+                # http://stackoverflow.com/a/18727481/3423324#how-to-extract-a-filename-from-a-url-append-a-word-to-it
+                url = urlparse(self.file_url)
+                file_name = os.path.basename(url.path)
+                file_name, file_suffix = os.path.splitext(file_name)
+            # end if
+            if self.file_mime:
+                file_suffix = mimetypes.guess_extension(self.file_mime)
+                file_suffix = '.jpg' if file_suffix == '.jpe' else file_suffix  # .jpe -> .jpg
+            # end if
+            if not file_suffix or not file_suffix.strip().lstrip("."):
+                logger.debug("file_suffix was empty. Using '.blob'")
+                file_suffix = ".blob"
+            # end if
+            file_name = "{filename}{suffix}".format(filename=file_name, suffix=file_suffix)
+            self.file = InputFileFromBlob(self.file_content, file_name=file_name, file_mime=self.file_mime)
+        elif self.file_path:
+            self.file = InputFileFromDisk(self.file_path, file_mime=self.file_mime)
+        elif self.file_url:
+            self.file = InputFileFromURL(self.file_url, file_mime=self.file_mime)
+        # end if
+    # end def prepare_file
+
+    def prepare_file(self):
+        """
+        This sets `self.file` to a fitting :class:`InputFile`
+        or a fitting sublcass (:class:`InputFileFromDisk`, :class:`InputFileFromURL`)
+        :return: Nothing
+        """
+        if self.file_input:
+            self.file = self.file_input
+        elif self.file_id:
             self.file = self.file_id
         elif self.file_content:
             file_name = "file"
