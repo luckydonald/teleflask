@@ -27,6 +27,7 @@ __all__ = [
     "TypingMessage", "HTMLMessage", "DocumentMessage", "ImageMessage", "ForwardMessage",
     "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
     "PhotoMessage", "StickerMessage", "MediaGroupMessage", "AudioMessage",
+    "DEFAULT_MESSAGE_ID",
 ]
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
@@ -529,8 +530,8 @@ class MediaGroupMessage(Message):
         :param disable_notification: Sends the messages silently. Users will receive a notification with no sound.
         :type  disable_notification: bool
 
-        :param reply_to_message_id: If the messages are a reply, ID of the original message
-        :type  reply_to_message_id: int
+        :param reply_id: If the messages are a reply, ID of the original message
+        :type  reply_id: int
         """
         for i, medium in enumerate(media):
             assert_instance(medium, InputMediaPhoto, InputMediaVideo, parameter_name="media[{i}]".format(i=i))

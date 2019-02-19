@@ -751,8 +751,9 @@ class TeleflaskBase(TeleflaskMixinBase):
             #     message.insert(message.index(msg) + 1, msg._next_msg)
             #     msg._next_msg = None
             from requests.exceptions import RequestException
+            msg._apply_update_receiver(receiver=reply_chat, reply_id=reply_msg)
             try:
-                yield msg.send(self.bot, receiver=reply_chat, reply_id=reply_msg)
+                yield msg.send(self.bot)
             except (TgApiException, RequestException):
                 logger.exception("Manager failed messages. Message was {msg!s}".format(msg=msg))
             # end try
