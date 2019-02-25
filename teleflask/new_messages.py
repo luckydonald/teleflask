@@ -16,6 +16,22 @@ __author__ = "luckydonald"
 
 
 class SendableMessageBase(TgBotApiObject):
+
+    def __init__(self, receiver=None, reply_id=DEFAULT_MESSAGE_ID):
+        super().__init__()
+        assert_type_or_raise(receiver, None, unicode_type, int, parameter_name="receiver")
+        self.receiver = receiver
+
+        if reply_id != DEFAULT_MESSAGE_ID and reply_id is not None and not isinstance(reply_id, int):
+            raise TypeError(
+                "The parameter reply_id should be of the class <class 'int'> or one of the values [None, DEFAULT_MESSAGE_ID], but is type {real_type}: {real_value!r}".format(
+                    real_type=type(reply_id), real_value=reply_id
+                )
+            )
+        # end if
+        self.reply_id = reply_id
+    # end def
+
     def _apply_update_receiver(self, receiver, reply_id):
         """
         Updates `self.receiver` and/or `self.reply_id` if they still contain the default value.
@@ -40,7 +56,60 @@ class SendableMessageBase(TgBotApiObject):
 
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         raise NotImplementedError("Overwrite this function.")
-# end def
+    # end def
+
+    def to_array(self):
+        array = super(SendableMessageBase, self).to_array()
+
+        if self.receiver is not None:  # only store if not default parameter
+            if isinstance(self.receiver, (str, unicode_type)):
+                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
+            elif isinstance(self.receiver, int):
+                array['chat_id'] = int(self.receiver)  # type intelse:
+                raise TypeError('Unknown type, must be one of None, str, int.')
+            # end if
+        # end if
+
+        if self.reply_id != DEFAULT_MESSAGE_ID:  # only store if not default parameter
+            if self.reply_id is None:
+                array['reply_to_message_id'] = None
+            elif isinstance(self.reply_id, (str, unicode_type)):
+                array['reply_to_message_id'] = u(self.receiver)  # py2: type unicode, py3: type str
+            elif isinstance(self.reply_id, int):
+                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
+                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
+            # end if
+        # end if
+    # end def
+
+    @staticmethod
+    def validate_array(array):
+        data = TgBotApiObject.validate_array(array)
+        if 'chat_id' in array:
+            receiver = array.get('chat_id')
+            if receiver is None:
+                data['receiver'] = None
+            elif isinstance(receiver, (str, unicode_type)):
+                data['receiver'] = u(receiver)
+            elif isinstance(receiver, int):
+                data['receiver'] = int(receiver)
+            else:
+                raise TypeError('Unknown type, must be one of str, int or None.')
+            # end if
+        # end if
+
+        if 'reply_to_message_id' in array:
+            reply_id = array.get('reply_to_message_id')
+            if reply_id is None:
+                data['reply_id'] = None
+            elif isinstance(reply_id, DEFAULT_MESSAGE_ID):
+                data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(reply_id)
+            elif isinstance(reply_id, int):
+                data['reply_id'] = int(reply_id)
+            else:
+                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
+            # end if
+# end class
 
 
 class TextMessage(SendableMessageBase):
@@ -112,7 +181,7 @@ class TextMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(TextMessage, self).__init__()
+        super(TextMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
@@ -120,14 +189,6 @@ class TextMessage(SendableMessageBase):
 
         assert_type_or_raise(text, unicode_type, parameter_name="text")
         self.text = text
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        if reply_id != DEFAULT_MESSAGE_ID:
-            raise TypeError("the parameter reply_id should be one of the values [None, DEFAULT_MESSAGE_ID] or of the class [<class 'int'>], but is type {real_type}: {real_value!r}".format(real_type=type(reply_id), real_value=reply_id))
-        # end if
-        self.reply_id = reply_id
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
         self.parse_mode = parse_mode
@@ -169,26 +230,10 @@ class TextMessage(SendableMessageBase):
         array = super(TextMessage, self).to_array()
         array['text'] = u(self.text)  # py2: type unicode, py3: type str
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
         if self.parse_mode is not None:
             array['parse_mode'] = u(self.parse_mode)  # py2: type unicode, py3: type str
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.disable_web_page_preview is not None:
             array['disable_web_page_preview'] = bool(self.disable_web_page_preview)  # type bool
         if self.disable_notification is not None:
@@ -210,16 +255,13 @@ class TextMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new TextMessage from a given dictionary.
 
         :return: new TextMessage instance.
         :rtype: TextMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -227,28 +269,10 @@ class TextMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['text'] = u(array.get('text'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['parse_mode'] = u(array.get('parse_mode')) if array.get('parse_mode') is not None else None
         data['disable_web_page_preview'] = bool(array.get('disable_web_page_preview')) if array.get('disable_web_page_preview') is not None else None
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
@@ -266,7 +290,7 @@ class TextMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return TextMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -359,7 +383,7 @@ class PhotoMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(PhotoMessage, self).__init__()
+        super(PhotoMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -368,12 +392,6 @@ class PhotoMessage(SendableMessageBase):
 
         assert_type_or_raise(photo, InputFile, unicode_type, parameter_name="photo")
         self.photo = photo
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(caption, None, unicode_type, parameter_name="caption")
         self.caption = caption
@@ -421,22 +439,8 @@ class PhotoMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
 
         if self.caption is not None:
             array['caption'] = u(self.caption)  # py2: type unicode, py3: type str
@@ -463,16 +467,13 @@ class PhotoMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new PhotoMessage from a given dictionary.
 
         :return: new PhotoMessage instance.
         :rtype: PhotoMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -480,8 +481,7 @@ class PhotoMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
-
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('photo'), InputFile):
             data['photo'] = InputFile.from_array(array.get('photo'))
         elif isinstance(array.get('photo'), str):
@@ -489,26 +489,8 @@ class PhotoMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['caption'] = u(array.get('caption')) if array.get('caption') is not None else None
         data['parse_mode'] = u(array.get('parse_mode')) if array.get('parse_mode') is not None else None
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
@@ -526,7 +508,7 @@ class PhotoMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return PhotoMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -645,7 +627,7 @@ class AudioMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(AudioMessage, self).__init__()
+        super(AudioMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -654,12 +636,6 @@ class AudioMessage(SendableMessageBase):
 
         assert_type_or_raise(audio, InputFile, unicode_type, parameter_name="audio")
         self.audio = audio
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(caption, None, unicode_type, parameter_name="caption")
         self.caption = caption
@@ -719,23 +695,8 @@ class AudioMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.caption is not None:
             array['caption'] = u(self.caption)  # py2: type unicode, py3: type str
 
@@ -778,16 +739,13 @@ class AudioMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new AudioMessage from a given dictionary.
 
         :return: new AudioMessage instance.
         :rtype: AudioMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -796,7 +754,7 @@ class AudioMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('audio'), InputFile):
             data['audio'] = InputFile.from_array(array.get('audio'))
         elif isinstance(array.get('audio'), str):
@@ -804,26 +762,8 @@ class AudioMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['caption'] = u(array.get('caption')) if array.get('caption') is not None else None
         data['parse_mode'] = u(array.get('parse_mode')) if array.get('parse_mode') is not None else None
         data['duration'] = int(array.get('duration')) if array.get('duration') is not None else None
@@ -853,7 +793,7 @@ class AudioMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return AudioMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -952,7 +892,7 @@ class DocumentMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(DocumentMessage, self).__init__()
+        super(DocumentMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -961,12 +901,6 @@ class DocumentMessage(SendableMessageBase):
 
         assert_type_or_raise(document, InputFile, unicode_type, parameter_name="document")
         self.document = document
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(thumb, None, InputFile, unicode_type, parameter_name="thumb")
         self.thumb = thumb
@@ -1017,23 +951,8 @@ class DocumentMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.thumb is not None:
             if isinstance(self.thumb, InputFile):
                 array['thumb'] = self.thumb.to_array()  # type InputFile
@@ -1068,16 +987,13 @@ class DocumentMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new DocumentMessage from a given dictionary.
 
         :return: new DocumentMessage instance.
         :rtype: DocumentMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -1085,8 +1001,9 @@ class DocumentMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
-
         data = {}
+        data = SendableMessageBase.validate_array(array)
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('document'), InputFile):
             data['document'] = InputFile.from_array(array.get('document'))
         elif isinstance(array.get('document'), str):
@@ -1094,26 +1011,8 @@ class DocumentMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         if array.get('thumb') is None:
             data['thumb'] = None
         elif isinstance(array.get('thumb'), InputFile):
@@ -1140,7 +1039,7 @@ class DocumentMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return DocumentMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -1263,7 +1162,7 @@ class VideoMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(VideoMessage, self).__init__()
+        super(VideoMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -1272,12 +1171,6 @@ class VideoMessage(SendableMessageBase):
 
         assert_type_or_raise(video, InputFile, unicode_type, parameter_name="video")
         self.video = video
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(duration, None, int, parameter_name="duration")
         self.duration = duration
@@ -1340,23 +1233,8 @@ class VideoMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.duration is not None:
             array['duration'] = int(self.duration)  # type int
         if self.width is not None:
@@ -1399,16 +1277,13 @@ class VideoMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new VideoMessage from a given dictionary.
 
         :return: new VideoMessage instance.
         :rtype: VideoMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -1417,7 +1292,7 @@ class VideoMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('video'), InputFile):
             data['video'] = InputFile.from_array(array.get('video'))
         elif isinstance(array.get('video'), str):
@@ -1425,26 +1300,8 @@ class VideoMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['duration'] = int(array.get('duration')) if array.get('duration') is not None else None
         data['width'] = int(array.get('width')) if array.get('width') is not None else None
         data['height'] = int(array.get('height')) if array.get('height') is not None else None
@@ -1475,7 +1332,7 @@ class VideoMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return VideoMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -1592,7 +1449,7 @@ class AnimationMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(AnimationMessage, self).__init__()
+        super(AnimationMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -1601,12 +1458,6 @@ class AnimationMessage(SendableMessageBase):
 
         assert_type_or_raise(animation, InputFile, unicode_type, parameter_name="animation")
         self.animation = animation
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(duration, None, int, parameter_name="duration")
         self.duration = duration
@@ -1666,23 +1517,8 @@ class AnimationMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.duration is not None:
             array['duration'] = int(self.duration)  # type int
         if self.width is not None:
@@ -1723,16 +1559,13 @@ class AnimationMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new AnimationMessage from a given dictionary.
 
         :return: new AnimationMessage instance.
         :rtype: AnimationMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -1741,7 +1574,7 @@ class AnimationMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('animation'), InputFile):
             data['animation'] = InputFile.from_array(array.get('animation'))
         elif isinstance(array.get('animation'), str):
@@ -1749,26 +1582,8 @@ class AnimationMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['duration'] = int(array.get('duration')) if array.get('duration') is not None else None
         data['width'] = int(array.get('width')) if array.get('width') is not None else None
         data['height'] = int(array.get('height')) if array.get('height') is not None else None
@@ -1798,7 +1613,7 @@ class AnimationMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return AnimationMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -1897,7 +1712,7 @@ class VoiceMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(VoiceMessage, self).__init__()
+        super(VoiceMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -1906,12 +1721,6 @@ class VoiceMessage(SendableMessageBase):
 
         assert_type_or_raise(voice, InputFile, unicode_type, parameter_name="voice")
         self.voice = voice
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(caption, None, unicode_type, parameter_name="caption")
         self.caption = caption
@@ -1962,23 +1771,8 @@ class VoiceMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.caption is not None:
             array['caption'] = u(self.caption)  # py2: type unicode, py3: type str
 
@@ -2006,16 +1800,13 @@ class VoiceMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new VoiceMessage from a given dictionary.
 
         :return: new VoiceMessage instance.
         :rtype: VoiceMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -2024,7 +1815,7 @@ class VoiceMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('voice'), InputFile):
             data['voice'] = InputFile.from_array(array.get('voice'))
         elif isinstance(array.get('voice'), str):
@@ -2032,26 +1823,8 @@ class VoiceMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['caption'] = u(array.get('caption')) if array.get('caption') is not None else None
         data['parse_mode'] = u(array.get('parse_mode')) if array.get('parse_mode') is not None else None
         data['duration'] = int(array.get('duration')) if array.get('duration') is not None else None
@@ -2070,7 +1843,7 @@ class VoiceMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return VoiceMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -2169,7 +1942,7 @@ class VideoNoteMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(VideoNoteMessage, self).__init__()
+        super(VideoNoteMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -2178,12 +1951,6 @@ class VideoNoteMessage(SendableMessageBase):
 
         assert_type_or_raise(video_note, InputFile, unicode_type, parameter_name="video_note")
         self.video_note = video_note
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(duration, None, int, parameter_name="duration")
         self.duration = duration
@@ -2243,27 +2010,6 @@ class VideoNoteMessage(SendableMessageBase):
                 raise TypeError('Unknown type, must be one of None, str, int.')
             # end if
 
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
-        if self.duration is not None:
-            array['duration'] = int(self.duration)  # type int
-        if self.length is not None:
-            array['length'] = int(self.length)  # type int
-        if self.thumb is not None:
-            if isinstance(self.thumb, InputFile):
-                array['thumb'] = self.thumb.to_array()  # type InputFile
-            elif isinstance(self.thumb, str):
-                array['thumb'] = u(self.thumb)  # py2: type unicode, py3: type str
-            else:
-                raise TypeError('Unknown type, must be one of InputFile, str.')
-            # end if
-
         if self.disable_notification is not None:
             array['disable_notification'] = bool(self.disable_notification)  # type bool
         if self.reply_markup is not None:
@@ -2283,16 +2029,13 @@ class VideoNoteMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new VideoNoteMessage from a given dictionary.
 
         :return: new VideoNoteMessage instance.
         :rtype: VideoNoteMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -2301,7 +2044,7 @@ class VideoNoteMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('video_note'), InputFile):
             data['video_note'] = InputFile.from_array(array.get('video_note'))
         elif isinstance(array.get('video_note'), str):
@@ -2309,26 +2052,8 @@ class VideoNoteMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['duration'] = int(array.get('duration')) if array.get('duration') is not None else None
         data['length'] = int(array.get('length')) if array.get('length') is not None else None
         if array.get('thumb') is None:
@@ -2355,7 +2080,7 @@ class VideoNoteMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return VideoNoteMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -2430,7 +2155,7 @@ class MediaGroupMessage(SendableMessageBase):
         :type  disable_notification: bool
 
         """
-        super(MediaGroupMessage, self).__init__()
+        super(MediaGroupMessage, self).__init__(receiver, reply_id)
         assert_type_or_raise(media, list, parameter_name="media")
         self.media = media
 
@@ -2497,19 +2222,16 @@ class MediaGroupMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new MediaGroupMessage from a given dictionary.
 
         :return: new MediaGroupMessage instance.
         :rtype: MediaGroupMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         media = array.get('media')  # InputMediaPhoto or InputMediaVideo
         if media['type'] == 'video':
             media = InputMediaVideo.from_array_list(media, list_level=1)
@@ -2519,27 +2241,10 @@ class MediaGroupMessage(SendableMessageBase):
             raise ValueError('media type is neither "video" nor "photo"')
         # end if
         data['media'] = media
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id', DEFAULT_MESSAGE_ID) is None:
-            data['reply_id'] = None
-        elif array.get('reply_to_message_id', DEFAULT_MESSAGE_ID) == DEFAULT_MESSAGE_ID:
-            data['reply_id'] = DEFAULT_MESSAGE_ID
-        elif isinstance(array.get('reply_to_message_id', DEFAULT_MESSAGE_ID), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # TODO
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
         return MediaGroupMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -2632,7 +2337,7 @@ class LocationMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(LocationMessage, self).__init__()
+        super(LocationMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
@@ -2643,12 +2348,6 @@ class LocationMessage(SendableMessageBase):
 
         assert_type_or_raise(longitude, float, parameter_name="longitude")
         self.longitude = longitude
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(live_period, None, int, parameter_name="live_period")
         self.live_period = live_period
@@ -2687,23 +2386,8 @@ class LocationMessage(SendableMessageBase):
         array = super(LocationMessage, self).to_array()
         array['latitude'] = float(self.latitude)  # type float
         array['longitude'] = float(self.longitude)  # type float
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.live_period is not None:
             array['live_period'] = int(self.live_period)  # type int
         if self.disable_notification is not None:
@@ -2725,16 +2409,13 @@ class LocationMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new LocationMessage from a given dictionary.
 
         :return: new LocationMessage instance.
         :rtype: LocationMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -2742,29 +2423,11 @@ class LocationMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['latitude'] = float(array.get('latitude'))
         data['longitude'] = float(array.get('longitude'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['live_period'] = int(array.get('live_period')) if array.get('live_period') is not None else None
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
         if array.get('reply_markup') is None:
@@ -2781,7 +2444,7 @@ class LocationMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return LocationMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -2892,7 +2555,7 @@ class VenueMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(VenueMessage, self).__init__()
+        super(VenueMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
@@ -2909,12 +2572,6 @@ class VenueMessage(SendableMessageBase):
 
         assert_type_or_raise(address, unicode_type, parameter_name="address")
         self.address = address
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(foursquare_id, None, unicode_type, parameter_name="foursquare_id")
         self.foursquare_id = foursquare_id
@@ -2960,23 +2617,8 @@ class VenueMessage(SendableMessageBase):
 
         array['address'] = u(self.address)  # py2: type unicode, py3: type str
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.foursquare_id is not None:
             array['foursquare_id'] = u(self.foursquare_id)  # py2: type unicode, py3: type str
 
@@ -3002,16 +2644,13 @@ class VenueMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new VenueMessage from a given dictionary.
 
         :return: new VenueMessage instance.
         :rtype: VenueMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -3019,31 +2658,13 @@ class VenueMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['latitude'] = float(array.get('latitude'))
         data['longitude'] = float(array.get('longitude'))
         data['title'] = u(array.get('title'))
         data['address'] = u(array.get('address'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['foursquare_id'] = u(array.get('foursquare_id')) if array.get('foursquare_id') is not None else None
         data['foursquare_type'] = u(array.get('foursquare_type')) if array.get('foursquare_type') is not None else None
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
@@ -3061,7 +2682,7 @@ class VenueMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return VenueMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -3160,7 +2781,7 @@ class ContactMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(ContactMessage, self).__init__()
+        super(ContactMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardMarkup
@@ -3171,12 +2792,6 @@ class ContactMessage(SendableMessageBase):
 
         assert_type_or_raise(first_name, unicode_type, parameter_name="first_name")
         self.first_name = first_name
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(last_name, None, unicode_type, parameter_name="last_name")
         self.last_name = last_name
@@ -3220,23 +2835,8 @@ class ContactMessage(SendableMessageBase):
 
         array['first_name'] = u(self.first_name)  # py2: type unicode, py3: type str
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.last_name is not None:
             array['last_name'] = u(self.last_name)  # py2: type unicode, py3: type str
 
@@ -3262,16 +2862,13 @@ class ContactMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new ContactMessage from a given dictionary.
 
         :return: new ContactMessage instance.
         :rtype: ContactMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -3279,29 +2876,11 @@ class ContactMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['phone_number'] = u(array.get('phone_number'))
         data['first_name'] = u(array.get('first_name'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['last_name'] = u(array.get('last_name')) if array.get('last_name') is not None else None
         data['vcard'] = u(array.get('vcard')) if array.get('vcard') is not None else None
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
@@ -3319,7 +2898,7 @@ class ContactMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return ContactMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -3342,6 +2921,7 @@ class ContactMessage(SendableMessageBase):
         return key in ["phone_number", "first_name", "receiver", "reply_id", "last_name", "vcard", "disable_notification", "reply_markup"] and hasattr(self, key) and bool(getattr(self, key, None))
     # end def __contains__
 # end class ContactMessage
+
 
 class ChatActionMessage(SendableMessageBase):
     """
@@ -3390,12 +2970,10 @@ class ChatActionMessage(SendableMessageBase):
         :type  receiver: None | str|unicode | int
 
         """
-        super(ChatActionMessage, self).__init__()
+        super(ChatActionMessage, self).__init__(receiver, None)
         assert_type_or_raise(action, unicode_type, parameter_name="action")
         self.action = action
 
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
         self._next_msg = None
     # end def __init__
 
@@ -3438,33 +3016,20 @@ class ChatActionMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new ChatActionMessage from a given dictionary.
 
         :return: new ChatActionMessage instance.
         :rtype: ChatActionMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['action'] = u(array.get('action'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
+        # TODO
         return ChatActionMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -3545,7 +3110,7 @@ class StickerMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardMarkup | pytgbot.api_types.sendable.reply_markup.ReplyKeyboardRemove | pytgbot.api_types.sendable.reply_markup.ForceReply
 
         """
-        super(StickerMessage, self).__init__()
+        super(StickerMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
@@ -3554,12 +3119,6 @@ class StickerMessage(SendableMessageBase):
 
         assert_type_or_raise(sticker, InputFile, unicode_type, parameter_name="sticker")
         self.sticker = sticker
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(disable_notification, None, bool, parameter_name="disable_notification")
         self.disable_notification = disable_notification
@@ -3601,23 +3160,6 @@ class StickerMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
         if self.disable_notification is not None:
             array['disable_notification'] = bool(self.disable_notification)  # type bool
         if self.reply_markup is not None:
@@ -3637,16 +3179,13 @@ class StickerMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new StickerMessage from a given dictionary.
 
         :return: new StickerMessage instance.
         :rtype: StickerMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.files import InputFile
         from pytgbot.api_types.sendable.reply_markup import ForceReply
@@ -3655,7 +3194,7 @@ class StickerMessage(SendableMessageBase):
         from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         if isinstance(array.get('sticker'), InputFile):
             data['sticker'] = InputFile.from_array(array.get('sticker'))
         elif isinstance(array.get('sticker'), str):
@@ -3663,26 +3202,8 @@ class StickerMessage(SendableMessageBase):
         else:
             raise TypeError('Unknown type, must be one of InputFile, str.')
         # end if
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
         if array.get('reply_markup') is None:
             data['reply_markup'] = None
@@ -3698,7 +3219,7 @@ class StickerMessage(SendableMessageBase):
             raise TypeError('Unknown type, must be one of InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply or None.')
         # end if
         return StickerMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -3887,7 +3408,7 @@ class InvoiceMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup
 
         """
-        super(InvoiceMessage, self).__init__()
+        super(InvoiceMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.payments import LabeledPrice
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
 
@@ -3911,12 +3432,6 @@ class InvoiceMessage(SendableMessageBase):
 
         assert_type_or_raise(prices, list, parameter_name="prices")
         self.prices = prices
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(provider_data, None, unicode_type, parameter_name="provider_data")
         self.provider_data = provider_data
@@ -4000,23 +3515,8 @@ class InvoiceMessage(SendableMessageBase):
 
         array['prices'] = self._as_array(self.prices)  # type list of LabeledPrice
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if isinstance(self.reply_id, DEFAULT_MESSAGE_ID):
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
+        # 'receiver' is taken care of by the superclass
+        # 'self.reply_id' is taken care of by the superclass
         if self.provider_data is not None:
             array['provider_data'] = u(self.provider_data)  # py2: type unicode, py3: type str
 
@@ -4052,22 +3552,19 @@ class InvoiceMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new InvoiceMessage from a given dictionary.
 
         :return: new InvoiceMessage instance.
         :rtype: InvoiceMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.payments import LabeledPrice
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['title'] = u(array.get('title'))
         data['description'] = u(array.get('description'))
         data['payload'] = u(array.get('payload'))
@@ -4075,26 +3572,8 @@ class InvoiceMessage(SendableMessageBase):
         data['start_parameter'] = u(array.get('start_parameter'))
         data['currency'] = u(array.get('currency'))
         data['prices'] = LabeledPrice.from_array_list(array.get('prices'), list_level=1)
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), None):
-            data['receiver'] = None(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif isinstance(array.get('reply_to_message_id'), DEFAULT_MESSAGE_ID):
-            data['reply_id'] = DEFAULT_MESSAGE_ID.from_array(array.get('reply_to_message_id'))
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        # 'chat_id' aka. 'reveiver' is checked by the superclass
+        # 'reply_to_message_id' aka. 'reply_id' is checked by the superclass
         data['provider_data'] = u(array.get('provider_data')) if array.get('provider_data') is not None else None
         data['photo_url'] = u(array.get('photo_url')) if array.get('photo_url') is not None else None
         data['photo_size'] = int(array.get('photo_size')) if array.get('photo_size') is not None else None
@@ -4110,7 +3589,7 @@ class InvoiceMessage(SendableMessageBase):
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
         data['reply_markup'] = InlineKeyboardMarkup.from_array(array.get('reply_markup')) if array.get('reply_markup') is not None else None
         return InvoiceMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
@@ -4191,17 +3670,11 @@ class GameMessage(SendableMessageBase):
         :type  reply_markup: pytgbot.api_types.sendable.reply_markup.InlineKeyboardMarkup
 
         """
-        super(GameMessage, self).__init__()
+        super(GameMessage, self).__init__(receiver, reply_id)
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
 
         assert_type_or_raise(game_short_name, unicode_type, parameter_name="game_short_name")
         self.game_short_name = game_short_name
-
-        assert_type_or_raise(receiver, None, None, unicode_type, int, parameter_name="receiver")
-        self.receiver = receiver
-
-        assert_type_or_raise(reply_id, None, DEFAULT_MESSAGE_ID, int, parameter_name="reply_id")
-        self.reply_id = reply_id
 
         assert_type_or_raise(disable_notification, None, bool, parameter_name="disable_notification")
         self.disable_notification = disable_notification
@@ -4237,23 +3710,6 @@ class GameMessage(SendableMessageBase):
         array = super(GameMessage, self).to_array()
         array['game_short_name'] = u(self.game_short_name)  # py2: type unicode, py3: type str
 
-        if self.receiver is not None:
-            if isinstance(self.receiver, None):
-                array['chat_id'] = None(self.receiver)  # type Noneelif isinstance(self.receiver, str):
-                array['chat_id'] = u(self.receiver)  # py2: type unicode, py3: type str
-            elif isinstance(self.receiver, int):
-                array['chat_id'] = int(self.receiver)  # type intelse:
-                raise TypeError('Unknown type, must be one of None, str, int.')
-            # end if
-
-        if self.reply_id is not None:
-            if self.reply_id = DEFAULT_MESSAGE_ID:
-                array['reply_to_message_id'] = self.reply_id.to_array()  # type DEFAULT_MESSAGE_ID
-            elif isinstance(self.reply_id, int):
-                array['reply_to_message_id'] = int(self.reply_id)  # type intelse:
-                raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int.')
-            # end if
-
         if self.disable_notification is not None:
             array['disable_notification'] = bool(self.disable_notification)  # type bool
         if self.reply_markup is not None:
@@ -4263,44 +3719,24 @@ class GameMessage(SendableMessageBase):
     # end def to_array
 
     @staticmethod
-    def from_array(array):
+    def validate_array(array):
         """
         Deserialize a new GameMessage from a given dictionary.
 
         :return: new GameMessage instance.
         :rtype: GameMessage
         """
-        if array is None or not array:
-            return None
-        # end if
         assert_type_or_raise(array, dict, parameter_name="array")
         from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup
 
 
-        data = {}
+        data = SendableMessageBase.validate_array(array)
         data['game_short_name'] = u(array.get('game_short_name'))
-        if array.get('chat_id') is None:
-            data['receiver'] = None
-        elif isinstance(array.get('chat_id'), str):
-            data['receiver'] = u(array.get('chat_id'))
-        elif isinstance(array.get('chat_id'), int):
-            data['receiver'] = int(array.get('chat_id'))
-        else:
-            raise TypeError('Unknown type, must be one of None, str, int or None.')
-        # end if
-        if array.get('reply_to_message_id') is None:
-            data['reply_id'] = None
-        elif array.get('reply_to_message_id') is DEFAULT_MESSAGE_ID:
-            data['reply_id'] = DEFAULT_MESSAGE_ID
-        elif isinstance(array.get('reply_to_message_id'), int):
-            data['reply_id'] = int(array.get('reply_to_message_id'))
-        else:
-            raise TypeError('Unknown type, must be one of DEFAULT_MESSAGE_ID, int or None.')
-        # end if
+        #TODO
         data['disable_notification'] = bool(array.get('disable_notification')) if array.get('disable_notification') is not None else None
         data['reply_markup'] = InlineKeyboardMarkup.from_array(array.get('reply_markup')) if array.get('reply_markup') is not None else None
         return GameMessage(**data)
-    # end def from_array
+    # end def validate_array
 
     def __str__(self):
         """
