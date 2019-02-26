@@ -659,8 +659,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         :rtype: list
         """
         from ..messages import Message
+        from ..new_messages import SendableMessageBase
         reply_chat, reply_msg = self.msg_get_reply_params(update)
-        if isinstance(result, (Message, str, list, tuple)):
+        if isinstance(result, (SendableMessageBase, Message, str, list, tuple)):
             return list(self.send_messages(result, reply_chat, reply_msg))
         elif result is False or result is None:
             logger.debug("Ignored result {res!r}".format(res=result))
@@ -727,9 +728,10 @@ class TeleflaskBase(TeleflaskMixinBase):
         """
         from pytgbot.exceptions import TgApiException
         from ..messages import Message, TextMessage
+        from ..new_messages import SendableMessageBase
 
         logger.debug("Got {}".format(messages))
-        if not isinstance(messages, (Message, str, list, tuple)):
+        if not isinstance(messages, (SendableMessageBase, Message, str, list, tuple)):
             raise TypeError("Is not a Message type (or str or tuple/list).")
         # end if
         if isinstance(messages, tuple):
@@ -744,8 +746,8 @@ class TeleflaskBase(TeleflaskMixinBase):
                 assert not isinstance(messages, str)  # because we would split a string to pieces.
                 msg = TextMessage(msg, parse_mode="text")
             # end if
-            if not isinstance(msg, Message):
-                raise TypeError("Is not a Message type.")
+            if not isinstance(msg, (Message, SendableMessageBase)):
+                raise TypeError("Is not a Message/SendableMessageBase type.")
             # end if
             # if msg._next_msg:  # TODO: Reply message?
             #     message.insert(message.index(msg) + 1, msg._next_msg)
