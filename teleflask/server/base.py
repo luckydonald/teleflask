@@ -727,8 +727,8 @@ class TeleflaskBase(TeleflaskMixinBase):
         :type  instant: bool or None
         """
         from pytgbot.exceptions import TgApiException
-        from ..messages import Message, TextMessage
-        from ..new_messages import SendableMessageBase
+        from ..messages import Message
+        from ..new_messages import SendableMessageBase, TextMessage
 
         logger.debug("Got {}".format(messages))
         if not isinstance(messages, (SendableMessageBase, Message, str, list, tuple)):
