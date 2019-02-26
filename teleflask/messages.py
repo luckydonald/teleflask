@@ -79,6 +79,27 @@ def should_backoff(e):
 
 
 class Message(object):
+    def _apply_update_receiver(self, receiver, reply_id):
+        """
+        Updates `self.receiver` and/or `self.reply_id` if they still contain the default value.
+        :param receiver: The receiver `chat_id` to use.
+                         Either `self.receiver`, if set, e.g. when instancing `TextMessage(receiver=10001231231, ...)`,
+                         or the `chat.id` of the update context, being the id of groups or the user's `from_peer.id` in private messages.
+        :type  receiver: None | str|unicode | int
+
+
+        :param reply_id: Reply to that `message_id` in the chat we send to.
+                         Either `self.reply_id`, if set, e.g. when instancing `TextMessage(reply_id=123123, ...)`,
+                         or the `message_id` of the update which triggered the bot's functions.
+        :type  reply_id: Type[DEFAULT_MESSAGE_ID] | int
+        """
+        if self.receiver is None:
+            self.receiver = receiver
+        # end if
+        if self.reply_id == DEFAULT_MESSAGE_ID:
+            self.reply_id = reply_id
+        # end if
+    # end def
     def toString(self):
         assert (self.is_empty() != self.is_not_empty())
         text = "Empty " if not self.is_not_empty() else ""
@@ -127,6 +148,14 @@ class Message(object):
     __repr__ = toString  # debug output
 
     def __init__(self, receiver=None, reply_id=DEFAULT_MESSAGE_ID, reply_markup=None, disable_notification=False):
+        """
+
+        :param receiver:
+        :param reply_id:
+        :type  reply_id: int
+        :param reply_markup:
+        :param disable_notification:
+        """
         self.args = []
         self.receiver = receiver
         self.reply_id = reply_id
@@ -141,7 +170,7 @@ class Message(object):
             self.reply_id = reply_id
         return []
 
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         raise NotImplementedError("Overwrite this function.")
 # end class
 
@@ -194,7 +223,7 @@ class MessageWithReplies(Message):
         return MessageWithReplies(list_or_tuple[0], list_or_tuple[1:])
     # end def
 
-    def send(self, sender: PytgbotApiBot, receiver, reply_id):
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         Sends a MessageWithReplies.
         First sends the `self.top_message`, and then the `self.reply_messages`
@@ -204,18 +233,21 @@ class MessageWithReplies(Message):
         :return: list of all results. `top_message` first, followed by the `reply_messages`.
         :rtype: list
         """
-        top_message_result = self.top_message.send(sender, receiver=receiver, reply_id=reply_id)
+        assert isinstance(self.top_message, Message)
+        self.top_message._apply_update_receiver(receiver=self.receiver, reply_id=self.reply_id)
+        top_message_result = self.top_message.send(sender)
         assert_instance(top_message_result, PytgbotApiMessage)
-        reply_id = top_message_result.message_id
+        top_msg_reply_id = top_message_result.message_id
         # end if
         reply_messages = list(self.reply_messages)  # tuple -> list, just in case
-        reply_results = [top_message_result,]  # the results of the sending.
+        reply_results = [top_message_result, ]  # the results of the sending.
         for child_msg in reply_messages:
             if isinstance(child_msg, (list, tuple)):
                 reply_messages.extend(child_msg)
                 continue
             assert_instance(child_msg, Message)
-            result = child_msg.send(sender, receiver=receiver, reply_id=reply_id)
+            child_msg._apply_update_receiver(receiver=self.receiver, reply_id=top_msg_reply_id)
+            result = child_msg.send(sender)
             reply_results.append(result)
         # end for
         return reply_results
@@ -245,11 +277,8 @@ class TypingMessage(Message):
         self.receiver = receiver
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->bool:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        return sender.send_chat_action(receiver, self.status)
+    def send(self, sender: PytgbotApiBot)->bool:
+        return sender.send_chat_action(self.receiver, self.status)
     # end def
 # end class
 
@@ -414,26 +443,22 @@ class DocumentMessage(Message):
     # end def prepare_file
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=10, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         try:
-            return self.actual_sending(sender, receiver, reply_id)
+            return self.actual_sending(sender)
         except TgApiServerException as e:
             should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
     # end def send
 
-    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+    def actual_sending(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
+        assert isinstance(self.reply_id, int)  # not DEFAULT_MESSAGE_ID
         return sender.send_document(
-            receiver, self.file, caption=self.caption, parse_mode=self.parse_mode,
-            reply_to_message_id=reply_id, reply_markup=self.reply_markup,
+            chat_id=self.receiver, document=self.file,
+            caption=self.caption, parse_mode=self.parse_mode,
+            reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
             disable_notification=self.disable_notification
         )
     # end def
@@ -457,13 +482,7 @@ class PhotoMessage(DocumentMessage):
         self.caption = caption
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         assert isinstance(self.file, (InputFile, InputFileFromDisk, InputFileFromURL, str))
         if not self.file_id and not any([self.file.file_name.endswith(x) for x in [".jpg", ".jpeg", ".gif", ".png", ".tif", ".bmp"]]):
@@ -480,7 +499,8 @@ class PhotoMessage(DocumentMessage):
         # end if
         try:
             return sender.send_photo(
-                receiver, self.file, caption=self.caption, reply_to_message_id=reply_id, reply_markup=self.reply_markup,
+                chat_id=self.receiver, photo=self.file,
+                caption=self.caption, reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
                 disable_notification = self.disable_notification
             )
         except TgApiServerException as e:
@@ -507,10 +527,11 @@ class StickerMessage(DocumentMessage):
         )
     # end def __init__
 
-    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+    def actual_sending(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         return sender.send_sticker(
-            receiver, self.file_id, reply_to_message_id=reply_id,
-            reply_markup=self.reply_markup, disable_notification=self.disable_notification
+            chat_id=self.receiver, sticker=self.file_id,
+            reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
+            disable_notification=self.disable_notification
         )
     # end def
 # end class
@@ -545,19 +566,13 @@ class MediaGroupMessage(Message):
     # end if
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id):
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :rtype: PytgbotApiMessage
         """
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
-
         return sender.send_media_group(
-            receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
+            chat_id=self.receiver, media=self.media,
+            disable_notification=self.disable_notification, reply_to_message_id=self.reply_id
         )
     # end def
 # end def
@@ -663,23 +678,18 @@ class GameMessage(Message):
     # end def __init__
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id) -> PytgbotApiMessage:
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :param sender: The default value
         :param receiver: The default value
         :param reply_id: The default value
         :return:
         """
-        if self.receiver:  # overwrite if we set something custom
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
         try:
             return sender.send_game(
-                receiver, self.game_short_name, disable_notification=self.disable_notification,
-                reply_to_message_id=reply_id, reply_markup=self.reply_markup
+                chat_id=self.receiver, game_short_name=self.game_short_name,
+                disable_notification=self.disable_notification,
+                reply_to_message_id=self.reply_id, reply_markup=self.reply_markup
             )
         except TgApiServerException as e:
             should_backoff(e)  # checks if it should raise an DoRetryException
@@ -700,16 +710,11 @@ class ForwardMessage(Message):
         self.from_chat_id = from_chat_id
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             return sender.forward_message(
-                receiver, self.from_chat_id, self.msg_id, disable_notification=self.disable_notification
+                chat_id=self.receiver, from_chat_id=self.from_chat_id,
+                message_id=self.msg_id, disable_notification=self.disable_notification
             )
         except TgApiServerException as e:
             should_backoff(e)  # checks if it should raise an DoRetryException
@@ -725,7 +730,6 @@ PARSE_MODE_MARKDOWN = "markdown"
 
 
 class TextMessage(Message):
-    from luckydonaldUtils.functions import caller
     class DEFAULT_MARKDOWN_IS_NONE(object): pass
 
     @caller
@@ -780,17 +784,12 @@ class TextMessage(Message):
     # end def __init__
 
     @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
-    def send(self, sender: PytgbotApiBot, receiver, reply_id)->PytgbotApiMessage:
-        if self.receiver:
-            receiver = self.receiver
-        # end if
-        if self.reply_id is not DEFAULT_MESSAGE_ID:
-            reply_id = self.reply_id
-        # end if
+    def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             result = sender.send_message(
-                receiver, self.text, parse_mode=self.parse_mode, disable_notification=self.disable_notification,
-                reply_to_message_id=reply_id, reply_markup=self.reply_markup,
+                chat_id=self.receiver, text=self.text,
+                parse_mode=self.parse_mode, disable_notification=self.disable_notification,
+                reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
                 disable_web_page_preview=self.disable_web_page_preview
             )
         except TgApiServerException as e:
