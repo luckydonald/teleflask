@@ -2,6 +2,9 @@
 import backoff
 from luckydonaldUtils.encoding import unicode_type, to_unicode as u
 from luckydonaldUtils.exceptions import assert_type_or_raise
+from luckydonaldUtils.functions import caller
+from luckydonaldUtils.logger import logging
+
 from pytgbot.api_types import TgBotApiObject
 from pytgbot.api_types.receivable.updates import Message as PytgbotApiMessage
 from pytgbot.api_types.sendable.files import InputFile
@@ -13,9 +16,33 @@ from pytgbot.bot import Bot as PytgbotApiBot
 from .messages import DEFAULT_MESSAGE_ID, DoRetryException
 
 __author__ = "luckydonald"
+logger = logging.getLogger(__name__)
 
 
 class SendableMessageBase(TgBotApiObject):
+    class DEFAULT_MARKDOWN_IS_NONE(object):
+        pass
+    # end class
+
+    @caller(1)
+    def _prepare_parse_mode(self, parse_mode, call=None):
+        if parse_mode is TextMessage.DEFAULT_MARKDOWN_IS_NONE:
+            if call:
+                logger.warning("No parse mode was set, do you need the old default 'markdown'?\n"
+                               "Called from function {caller.name} at file {caller.file}:{caller.line}\n"
+                               "The line is:\n"
+                               "{caller.code}".format(**call)
+                )
+            else:
+                logger.warning("No parse mode was set, do you need the old default 'markdown'?\nCaller unknown.")
+            # end if
+            parse_mode = "text"
+        # end if
+        if parse_mode == "text":
+            parse_mode = None  # because "text" does not exist on TG Api.
+        # end if
+        return parse_mode
+    # end def
 
     def __init__(self, receiver=None, reply_id=DEFAULT_MESSAGE_ID):
         super().__init__()
@@ -191,7 +218,7 @@ class TextMessage(SendableMessageBase):
         self.text = text
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(disable_web_page_preview, None, bool, parameter_name="disable_web_page_preview")
         self.disable_web_page_preview = disable_web_page_preview
@@ -397,7 +424,7 @@ class PhotoMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(disable_notification, None, bool, parameter_name="disable_notification")
         self.disable_notification = disable_notification
@@ -641,7 +668,7 @@ class AudioMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(duration, None, int, parameter_name="duration")
         self.duration = duration
@@ -909,7 +936,7 @@ class DocumentMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(disable_notification, None, bool, parameter_name="disable_notification")
         self.disable_notification = disable_notification
@@ -1188,7 +1215,7 @@ class VideoMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(supports_streaming, None, bool, parameter_name="supports_streaming")
         self.supports_streaming = supports_streaming
@@ -1475,7 +1502,7 @@ class AnimationMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(disable_notification, None, bool, parameter_name="disable_notification")
         self.disable_notification = disable_notification
@@ -1726,7 +1753,7 @@ class VoiceMessage(SendableMessageBase):
         self.caption = caption
 
         assert_type_or_raise(parse_mode, None, unicode_type, parameter_name="parse_mode")
-        self.parse_mode = parse_mode
+        self.parse_mode = self._prepare_parse_mode(parse_mode)
 
         assert_type_or_raise(duration, None, int, parameter_name="duration")
         self.duration = duration
