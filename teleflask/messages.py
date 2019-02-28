@@ -14,8 +14,9 @@ from luckydonaldUtils.encoding import unicode_type
 from luckydonaldUtils.decorators import deprecated
 
 from luckydonaldUtils.exceptions import assert_type_or_raise as assert_instance
-from luckydonaldUtils.text import text_split, cut_paragraphs, escape
 from luckydonaldUtils.files.mime import get_file_mime
+from luckydonaldUtils.functions import caller
+from luckydonaldUtils.text import text_split, cut_paragraphs, escape
 
 from pytgbot import Bot as PytgbotApiBot
 from pytgbot.api_types.receivable.updates import Message as PytgbotApiMessage
