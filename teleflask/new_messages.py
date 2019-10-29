@@ -231,7 +231,7 @@ class TextMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -434,7 +434,7 @@ class PhotoMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -690,7 +690,7 @@ class AudioMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -946,7 +946,7 @@ class DocumentMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -1228,7 +1228,7 @@ class VideoMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -1512,7 +1512,7 @@ class AnimationMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -1766,7 +1766,7 @@ class VoiceMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -1996,7 +1996,7 @@ class VideoNoteMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -2197,7 +2197,7 @@ class MediaGroupMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -2387,7 +2387,7 @@ class LocationMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -2614,7 +2614,7 @@ class VenueMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -2834,7 +2834,7 @@ class ContactMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -3004,7 +3004,7 @@ class ChatActionMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -3155,7 +3155,7 @@ class StickerMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -3504,7 +3504,7 @@ class InvoiceMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.
@@ -3711,7 +3711,7 @@ class GameMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot):
         """
         Send the message via pytgbot.

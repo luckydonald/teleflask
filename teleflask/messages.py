@@ -443,7 +443,7 @@ class DocumentMessage(Message):
         # end if
     # end def prepare_file
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=10, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         try:
@@ -482,7 +482,7 @@ class PhotoMessage(DocumentMessage):
             caption = cut_paragraphs(caption, length=140)[:140]
         self.caption = caption
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         assert isinstance(self.file, (InputFile, InputFileFromDisk, InputFileFromURL, str))
@@ -566,7 +566,7 @@ class MediaGroupMessage(Message):
         return self.media and len(self.media) > 2
     # end if
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :rtype: PytgbotApiMessage
@@ -678,7 +678,7 @@ class GameMessage(Message):
         )
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :param sender: The default value
@@ -710,7 +710,7 @@ class ForwardMessage(Message):
             raise ValueError("Chat id is no integer.")
         self.from_chat_id = from_chat_id
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             return sender.forward_message(
@@ -784,7 +784,7 @@ class TextMessage(Message):
         # end if
     # end def __init__
 
-    @backoff.on_exception(backoff.expo, DoRetryException, max_tries=20, jitter=None)
+    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             result = sender.send_message(
