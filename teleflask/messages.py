@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import os  # file existence check before upload.
-import magic
+import magic  # pip install python-magic   or   pip install python-magic-bin
 import logging
 import backoff
 import requests
@@ -28,17 +28,20 @@ __all__ = [
     "TypingMessage", "HTMLMessage", "DocumentMessage", "ImageMessage", "ForwardMessage",
     "GameMessage", "PlainMessage", "MarkdownMessage", "MessageWithReplies", "Message",
     "PhotoMessage", "StickerMessage", "MediaGroupMessage", "AudioMessage",
-    "DEFAULT_MESSAGE_ID",
+    "DEFAULT_MESSAGE_ID", "MAX_TEXT_LENGTH", "MAX_CAPTION_LENGTH",
 ]
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
-MAX_TEXT_LENGTH = 4096  # should be 2048?
+MAX_TEXT_LENGTH = 4096
+MAX_CAPTION_LENGTH = 4096
+
 RE_TG_USERNAME = r"((^|\s*)@(?P<username>(?:[a-z](?:[a-z0-9]|_(?!_)){3,}[a-z0-9])|" \
                  r"(?:gif|vid|wiki|pic|bing|imdb|bold))(\s*|$))"  # https://regex101.com/r/gS5lZ6/2
 RE_TOO_MANY_REQUESTS = r"Too Many Requests: retry after (\d+)"
+
 
 class DEFAULT_MESSAGE_ID(object):
     """
