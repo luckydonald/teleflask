@@ -3,8 +3,7 @@ from functools import update_wrapper  # should be installed by flask
 
 from luckydonaldUtils.logger import logging
 
-from server.abstacts import AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, \
-    AbstractUpdates
+from .abstact import AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, AbstractUpdates
 from .base import TeleflaskBase
 # from .mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
 

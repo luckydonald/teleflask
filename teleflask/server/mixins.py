@@ -6,7 +6,7 @@ from collections import OrderedDict
 from pytgbot.api_types.receivable.updates import Update
 
 from ..exceptions import AbortProcessingPlease
-from .abstacts import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
+from .abstact import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
 from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
