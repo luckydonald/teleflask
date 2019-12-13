@@ -3,6 +3,8 @@ from functools import update_wrapper  # should be installed by flask
 
 from luckydonaldUtils.logger import logging
 
+from server.abstacts import AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, \
+    AbstractUpdates
 from .base import TeleflaskBase
 # from .mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
 
@@ -37,7 +39,7 @@ class TBlueprintSetupState(object):
 # end class
 
 
-class TBlueprint(object):
+class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, AbstractUpdates):
     warn_on_modifications = False
 
     def __init__(self, name):
@@ -60,7 +62,7 @@ class TBlueprint(object):
             deferred(state)
         # end for
     # end def
-    
+
     def make_setup_state(self, teleflask, options, first_registration=False):
         """Creates an instance of :meth:`~flask.blueprints.BlueprintSetupState`
         object that is later passed to the register callback functions.

@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 import logging
+from abc import abstractmethod
 from collections import OrderedDict
 
 from pytgbot.api_types.receivable.updates import Update
 
 from ..exceptions import AbortProcessingPlease
+from .abstacts import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
 from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
+__all__ = ['BotCommandsMixin', 'MessagesMixin', 'RegisterBlueprintsMixin', 'StartupMixin', 'UpdatesMixin']
 logger = logging.getLogger(__name__)
 
 
-class UpdatesMixin(TeleflaskMixinBase):
+class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
     """
     This mixin allows you to register functions to listen on updates.
 
@@ -192,7 +195,7 @@ class UpdatesMixin(TeleflaskMixinBase):
 # end class
 
 
-class MessagesMixin(TeleflaskMixinBase):
+class MessagesMixin(TeleflaskMixinBase, AbstractMessages):
     """
     Add this to get messages.
 
@@ -394,7 +397,7 @@ class MessagesMixin(TeleflaskMixinBase):
 # end class
 
 
-class BotCommandsMixin(TeleflaskMixinBase):
+class BotCommandsMixin(TeleflaskMixinBase, AbstractBotCommands):
     """
     Add this to get commands.
 
@@ -438,7 +441,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
     def on_command(self, command, exclusive=False):
         """
         Decorator to register a command.
-        
+
         :param command: The command to be registered. Omit the slash.
         :param exclusive: Stop processing the update further, so no other listenere will be called if this command triggered.
 
@@ -449,13 +452,13 @@ class BotCommandsMixin(TeleflaskMixinBase):
             >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
 
             If you now write "/foo hey" to the bot, it will reply with "bar:hey"
-            
+
             You can set to ignore other registered listeners to trigger.
-            
+
             >>> @app.on_command("bar", exclusive=True)
             >>> def bar(update, text)
             >>>     return "Bar command happened."
-            
+
             >>> @app.on_command("bar")
             >>> def bar2(update, text)
             >>>     return "This function will never be called."
@@ -517,7 +520,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
         """
         :param command: remove them by command, e.g. `test`.
         :param function: remove them by function
-        :return: 
+        :return:
         """
         if command:
             for cmd in self._yield_commands(command):
@@ -625,7 +628,7 @@ class BotCommandsMixin(TeleflaskMixinBase):
 # end class
 
 
-class StartupMixin(TeleflaskMixinBase):
+class StartupMixin(TeleflaskMixinBase, AbstractStartup):
     """
     This mixin allows you to register functions to be run on bot/server start.
 
@@ -719,7 +722,7 @@ class StartupMixin(TeleflaskMixinBase):
 # end class
 
 
-class RegisterBlueprintsMixin(TeleflaskMixinBase):
+class RegisterBlueprintsMixin(TeleflaskMixinBase, AbstractRegisterBlueprints):
     def __init__(self, *args, **kwargs) -> None:
         #: all the attached blueprints in a dictionary by name.  Blueprints
         #: can be attached multiple times so this dictionary does not tell
@@ -755,5 +758,15 @@ class RegisterBlueprintsMixin(TeleflaskMixinBase):
         .. versionadded:: 0.11
         """
         return iter(self._blueprint_order)
+    # end def
+
+    @abstractmethod
+    def process_update(self, update):
+        return super().process_update(update)
+    # end def
+
+    @abstractmethod
+    def do_startup(self):
+        return super().do_startup()
     # end def
 # end class
