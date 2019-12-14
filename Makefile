@@ -1,3 +1,4 @@
 upload:
-	python setup.py sdist upload -r pypi
+	python setup.py sdist
+	twine upload dist/*
 	git push --follow-tags
