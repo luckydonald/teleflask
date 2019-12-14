@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from abc import abstractmethod
+
 import backoff
 from luckydonaldUtils.encoding import unicode_type, to_unicode as u
 from luckydonaldUtils.exceptions import assert_type_or_raise
@@ -81,7 +83,14 @@ class SendableMessageBase(TgBotApiObject):
         # end if
     # end def
 
+    @abstractmethod
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
+        raise NotImplementedError("Overwrite this function.")
+    # end def
+
+    @abstractmethod
+    def update(self, sender: PytgbotApiBot, message_id: int):
+        """ Function called when a message should be updated with new text etc. """
         raise NotImplementedError("Overwrite this function.")
     # end def
 
