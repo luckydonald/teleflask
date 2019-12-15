@@ -64,9 +64,10 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         def on_update_inner(function):
             return self.add_update_listener(function, required_keywords=required_keywords)
         # end def
-        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+        if (
+            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
             not isinstance(required_keywords[0], str)  # not string -> must be function
-             ):
+        ):
             # @on_update
             function = required_keywords[0]
             required_keywords = None
