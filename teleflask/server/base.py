@@ -142,8 +142,10 @@ class TeleflaskBase(TeleflaskMixinBase):
             self.disable_setting_webhook_telegram = disable_setting_webhook_telegram
         # end if
 
-        if app or blueprint:
+        if app or blueprint:  # if we have an app or flask blueprint call init_app for adding the routes, which calls init_bot as well.
             self.init_app(app, blueprint=blueprint, debug_routes=debug_routes)
+        elif api_key:  # otherwise if we have at least an api key, call init_bot.
+            self.init_bot()
         # end if
 
         self.update_listener = list()
