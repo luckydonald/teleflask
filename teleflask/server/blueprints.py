@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class TBlueprintSetupState(object):
     """Temporary holder object for registering a blueprint with the
     application.  An instance of this class is created by the
-    :meth:`~flask.Blueprint.make_setup_state` method and later passed
+    :meth:`~teleflask.TBlueprint.make_setup_state` method and later passed
     to all register callback functions.
     """
 
