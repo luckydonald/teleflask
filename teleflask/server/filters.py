@@ -57,6 +57,14 @@ class Filter(object):
         """
         return self.func(update)
     # end def
+
+    def __str__(self):
+        return "Parent Filter class allowing everything, but actually you should subclass this."
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r})"
+    # end def
 # end class
 
 
@@ -137,6 +145,21 @@ class UpdateFilter(Filter):
         """
         return self.func(update)
     # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self):
+        if not self.required_update_keywords:
+            return "Update Filter matching every update."
+        elif len(self.required_update_keywords) == 1:
+            return f"Update Filter matching only updates with the attribute {self.required_update_keywords[0]!r} set and not None"
+        else:
+            return f"Update Filter matching only updates with all the attributes {self.required_update_keywords!r} set and not None"
+        # end if
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, required_update_keywords={self.required_update_keywords!r})"
+    # end def
 # end def
 
 
@@ -191,6 +214,21 @@ class MessageFilter(UpdateFilter):
         """
         message = update.message
         return self.func(update, message)
+    # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self):
+        if not self.required_message_keywords:
+            return "Message Filter matching every message."
+        elif len(self.required_message_keywords) == 1:
+            return f"Message Filter matching only messages with the attribute {self.required_message_keywords[0]!r} set and not None"
+        else:
+            return f"Message Filter matching only messages with all the attributes {self.required_message_keywords!r} set and not None"
+        # end if
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, required_message_keywords={self.required_message_keywords!r})"
     # end def
 # end class
 
@@ -309,6 +347,19 @@ class CommandFilter(MessageFilter):
         Calls the callback
         """
         return self.func(update, text=match_result)
+    # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self):
+        if not self._username:
+            return f"Command Filter matching the command {self._command} but no username suffixed commands."
+        else:
+            return f"Command Filter matching the command {self._command} including the ones with @{self._username}."
+        # end if
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, command={self._command!r}, username={self._username!r})"
     # end def
 # end class
 
