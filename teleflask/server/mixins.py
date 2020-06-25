@@ -2,9 +2,11 @@
 import logging
 from abc import abstractmethod
 from collections import OrderedDict
+from typing import List
 
 from pytgbot.api_types.receivable.updates import Update
 
+from .filters import UpdateFilter, Filter, NoMatch
 from ..exceptions import AbortProcessingPlease
 from .abstact import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
 from .base import TeleflaskMixinBase
@@ -42,16 +44,13 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
 
     """
     def __init__(self, *args, **kwargs):
-        self.update_listeners = OrderedDict()  # Python3.6, dicts are sorted # Schema:
-        # Schema: {func: [ ["message", "key", "..."] ]}  or  {func: None} for wildcard.
-        #                [ ['A', 'B'], ['C'] ] == 'A' and 'B' or 'C'
-        #                [ ]  means 'allow all'.
+        self.update_listeners: List[Filter] = []
 
         super(UpdatesMixin, self).__init__(*args, **kwargs)
     # end def
 
-    def on_update(self, *required_keywords):
-        """
+    on_update = UpdateFilter.decorator
+    on_update.__doc__ = """
         Decorator to register a function to receive updates.
 
         Usage:
@@ -61,38 +60,24 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
             >>>     # do stuff with the update
             >>>     # you can use app.bot to access the bot's messages functions
         """
-        def on_update_inner(function):
-            return self.add_update_listener(function, required_keywords=required_keywords)
-        # end def
-        if (
-            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str)  # not string -> must be function
-        ):
-            # @on_update
-            function = required_keywords[0]
-            required_keywords = None
-            return on_update_inner(function)  # not string -> must be function
-        # end if
-        # -> else: *required_keywords are the strings
-        # @on_update("update_id", "message", "whatever")
-        return on_update_inner  # let that function be called again with the function.
     # end def
 
-    def add_update_listener(self, function, required_keywords=None):
+    def register_handler(self, event_handler: Filter):
         """
-        Adds an listener for updates.
-        You can filter them if you supply a list of names of attributes which all need to be present.
+        Adds an listener for any update type.
+        You provide a Filter for them as parameter, it also contains the function.
         No error will be raised if it is already registered. In that case a warning will be logged,
         but nothing else will happen, and the function is not added.
 
         Examples:
-            >>> add_update_listener(func, required_keywords=["update_id", "message"])
+            >>> register_handler(UpdateFilter(func, required_keywords=["update_id", "message"]))
             # will call  func(msg)  for all updates which are message (have the message attribute) and have a update_id.
 
-            >>> add_update_listener(func, required_keywords=["inline_query"])
+            >>> register_handler(UpdateFilter(func, required_keywords=["inline_query"]))
             # calls   func(msg)     for all updates which are inline queries (have the inline_query attribute)
 
-            >>> add_update_listener(func)
+            >>> register_handler(UpdateFilter(func, required_keywords=None))
+            >>> register_handler(UpdateFilter(func))
             # allows all messages.
 
         :param function:  The function to call. Will be called with the update and the message as arguments
@@ -101,45 +86,13 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         :return: the function, unmodified
         """
 
-        if required_keywords is None:
-            self.update_listeners[function] = [None]
-            logging.debug("listener required keywords set to allow all.")
-            return function
-        # end def
 
-        # check input, make a list out of what we might get.
-        if isinstance(required_keywords, str):
-            required_keywords = [required_keywords]  # str => [str]
-        elif isinstance(required_keywords, tuple):
-            required_keywords = list(required_keywords)  # (str,str) => [str,str]
-        # end if
-        assert isinstance(required_keywords, list)
-        for keyword in required_keywords:
-            assert isinstance(keyword, str)  # required_keywords must all be type str
-        # end if
-
-        if function not in self.update_listeners:
-            # function does not exists, create the keywords.
-            logging.debug("adding function to listeners")
-            self.update_listeners[function] = [required_keywords]  # list of lists. Outer list = OR, inner = AND
-        else:
-            # function already exists, add/merge the keywords.
-            if None in self.update_listeners[function]:
-                # None => allow all, so we don't need to add a filter
-                logger.debug('listener not updated, as it is already wildcard')
-            elif required_keywords in self.update_listeners[function]:
-                # the keywords already are required, we don't need to add a filter
-                logger.debug("listener required keywords already in {!r}".format(self.update_listeners[function]))
-            else:
-                # add another case
-                self.update_listeners[function].append(required_keywords)  # Outer list = OR, required_keywords = AND
-                logger.debug("listener required keywords updated to {!r}".format(self.update_listeners[function]))
-            # end if
-        # end if
-        return function
+        logging.debug("adding handler to listeners")
+        self.update_listeners.append(event_handler)  # list of lists. Outer list = OR, inner = AND
+        return event_handler
     # end def add_update_listener
 
-    def remove_update_listener(self, func):
+    def remove_update_listener(self, event_handler):
         """
         Removes an function from the update listener list.
         No error will be raised if it is already registered. In that case a warning will be logged,
@@ -149,12 +102,11 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         :param function:  The function to remove
         :return: the function, unmodified
         """
-        if func in self.update_listeners:
-           del self.update_listeners[func]
-        else:
+        try:
+            self.update_listeners.remove(event_handler)
+        except ValueError:
             logger.warning("listener already removed.")
         # end if
-        return func
     # end def
 
     def process_update(self, update):
@@ -167,25 +119,26 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         :return: nothing.
         """
         assert isinstance(update, Update)  # Todo: non python objects
-        for listener, required_fields_array in self.update_listeners.items():
-            for required_fields in required_fields_array:
-                try:
-                    if not required_fields or all([hasattr(update, f) and getattr(update, f) for f in required_fields]):
-                        # either filters evaluates to False, (None, empty list etc) which means it should not filter
-                        # or it has filters, than we need to check if that attributes really exist.
-                        self.process_result(update, listener(update))  # this will be TeleflaskMixinBase.process_result()
-                        break  # stop processing other required_fields combinations
-                    # end if
-                except AbortProcessingPlease as e:
-                    logger.debug('Asked to stop processing updates.')
-                    if e.return_value:
-                        self.process_result(update, e.return_value)
-                    # end if
-                    return  # not calling super().process_update(update)
-                except Exception:
-                    logger.exception("Error executing the update listener {func}.".format(func=listener))
-                # end try
-            # end for
+        filter: Filter
+        for filter in self.update_listeners:
+            try:
+                # check if the Filter matches
+                match_result = filter.match(update)
+                # call the handler
+                result = filter.call_handler(update=update, match_result=match_result)
+                # send the message
+                self.process_result(update, result)  # this will be TeleflaskMixinBase.process_result()
+            except NoMatch as e:
+                logger.debug(f'not matching filter {filter!s}.')
+            except AbortProcessingPlease as e:
+                logger.debug('Asked to stop processing updates.')
+                if e.return_value:
+                    self.process_result(update, e.return_value)  # this will be TeleflaskMixinBase.process_result()
+                # end if
+                return  # not calling super().process_update(update)
+            except Exception:
+                logger.exception(f"Error executing the update listener with {filter!s}: {filter!r}")
+            # end try
         # end for
         super().process_update(update)
     # end def process_update

@@ -8,6 +8,8 @@ from luckydonaldUtils.logger import logging
 __author__ = 'luckydonald'
 
 from pytgbot.api_types.receivable.updates import Update, Message
+
+from teleflask import Teleflask, TBlueprint
 from ..messages import Message as OldSendableMessage
 from ..new_messages import SendableMessageBase
 
@@ -19,6 +21,9 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     logging.add_colored_handler(level=logging.DEBUG)
 # end if
+
+
+_HANDLERS_ATTRIBUTE = '__teleflask.__handlers'
 
 
 class NoMatch(Exception):
@@ -144,6 +149,53 @@ class UpdateFilter(Filter):
         Calls the callback
         """
         return self.func(update)
+    # end def
+
+    @classmethod
+    def decorator(cls, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None], *required_keywords):
+        """
+        Decorator to register a function to receive updates.
+
+        Usage:
+            >>> app = Teleflask(API_KEY)
+
+            >>> @app.on_update
+            >>> @app.on_update("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     assert isinstance(update, Update)
+            ...     # do stuff with the update
+            ...     # you can use app.bot to access the bot's messages functions
+        Or, if you wanna go do it directly for some strange reason:
+            >>> @UpdateFilter.decorator(app)
+            >>> @UpdateFilter.decorator(app)("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     pass
+        """
+
+        def decorator_inner(function):
+            if teleflask_or_tblueprint:
+                filter = cls(func=function, required_update_keywords=required_keywords)
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, required_update_keywords=required_keywords)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
+        # end def
+
+        if (
+            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str)  # not string -> must be function
+        ):
+            # @on_update
+            function = required_keywords[0]
+            required_keywords = None
+            return decorator_inner(function)  # not string -> must be function
+        # end if
+        # -> else: all `*required_keywords` are the strings
+        # @on_update("update_id", "message", "whatever")
+        return decorator_inner  # let that function be called again with the function.
     # end def
 
     # noinspection SqlNoDataSourceInspection
