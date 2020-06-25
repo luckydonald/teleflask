@@ -219,7 +219,7 @@ class CommandFilter(MessageFilter):
     command_strings: Tuple[str, ...]
     _command_strings: Union[Tuple[str, ...], None]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: str = 'bot'):
+    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: Union[str, None]):
         super().__init__(func=func, required_message_keywords=['text'])
         self._command = command
         self._username = username
@@ -273,14 +273,16 @@ class CommandFilter(MessageFilter):
         :param command: The command to construct.
         :return:
         """
-        for syntax in (
-                "/{command}",  # without username
-                "/{command}@{username}",  # with username
-                "command:///{command}",  # iOS represents commands like this
-                "command:///{command}@{username}"  # iOS represents commands like this
-        ):
-            yield syntax.format(command=command, username=username)
-        # end for
+        yield from (
+            f"/{command}",  # without username
+            f"command:///{command}",  # iOS represents commands like this
+        )
+        if username:
+            yield from (
+                f"/{command}@{username}",  # with username
+                f"command:///{command}@{username}"  # iOS represents commands like this
+            )
+        # end if
     # end def _yield_commands
 
     def match(self, update: Update) -> MATCH_RESULT_TYPE:
