@@ -105,21 +105,30 @@ class UpdateFilter(Filter):
         return required_keywords
     # end def
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        if required_keywords == DEFAULT:
-            required_keywords = self.required_update_keywords
-        # end if
+    @staticmethod
+    def _has_required_keywords(obj: Any, required_keywords: Union[Tuple[str, ...], List[str]]) -> bool:
+        """
+        Check that ALL the given `required_keywords` are existent in the `obj`ect, and are not `None`.
 
+        :param required_keywords: List of required non-None element attributes.
+        :return: Boolean if that's the case.
+        """
         if required_keywords is None:
             # no filter -> allow all the differnt type of updates
-            return
+            return True
         # end if
 
-        if all(getattr(update, required_keyword, None) != None for required_keyword in required_keywords):
+        if all(getattr(obj, required_keyword, None) is not None for required_keyword in required_keywords):
             # we have one of the required fields
-            return
+            return True
         # end if
-        raise NoMatch('update not matching the required keywords')
+        return False
+    # end def
+
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        if not self._has_required_keywords(update, self.required_update_keywords):
+            raise NoMatch('update not matching the required keywords')
+        # end if
     # end def
 
     def call_handler(self, update: Update, match_result: MATCH_RESULT_TYPE) -> OPTIONAL_SENDABLE_MESSAGE_TYPES:
@@ -160,31 +169,20 @@ class MessageFilter(UpdateFilter):
 
     :params required_update_keywords: Optionally: Specify attribute the message needs to have.
     """
+    TYPE = 'update'
     MATCH_RESULT_TYPE = None
     func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], required_update_keywords: Union[List[str], None] = None):
+    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], required_message_keywords: Union[List[str], None] = None):
         super().__init__(func=func, required_update_keywords=['message'])
-        self.required_message_keywords = self._prepare_required_keywords(required_update_keywords)
+        self.required_message_keywords = self._prepare_required_keywords(required_message_keywords)
     # end def
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        super().match(update=update, required_keywords=['message'])
-
-        if required_keywords == DEFAULT:
-            required_keywords = self.required_message_keywords
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        super().match(update=update)
+        if not self._has_required_keywords(update.message, self.required_message_keywords):
+            raise NoMatch('message not matching the required keywords')
         # end if
-
-        if required_keywords is None:
-            # no filter -> allow all the differnt type of updates
-            return
-        # end if
-
-        if all(getattr(update.message, required_keyword, None) != None for required_keyword in required_keywords):
-            # we have one of the required fields
-            return
-        # end if
-        raise NoMatch('message not matching the required keywords')
     # end def
 
     def call_handler(self, update: Update, match_result: MATCH_RESULT_TYPE) -> OPTIONAL_SENDABLE_MESSAGE_TYPES:
@@ -206,6 +204,7 @@ class CommandFilter(MessageFilter):
         >>> def foobar(update, text):
         >>>     ...  # like above
     """
+    TYPE = "command"
     TEXT_PARAM_TYPE = Union[None, str]
     MATCH_RESULT_TYPE = TEXT_PARAM_TYPE
 
@@ -220,8 +219,8 @@ class CommandFilter(MessageFilter):
     command_strings: Tuple[str, ...]
     _command_strings: Union[Tuple[str, ...], None]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: str):
-        super().__init__(func=func, required_update_keywords=['message'])
+    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: str = 'bot'):
+        super().__init__(func=func, required_message_keywords=['text'])
         self._command = command
         self._username = username
         self._command_strings = tuple(self._yield_commands(command=command, username=username))
@@ -233,7 +232,11 @@ class CommandFilter(MessageFilter):
     # end def
 
     @command.setter
-    def command(self, value: str):
+    def command(self, value: str) -> None:
+        if self._command == value:
+            # no need to waste resources here.
+            return
+        # end if
         self._command = value
         self._command_strings = tuple(self._yield_commands(command=value, username=self._username))
     # end def
@@ -244,7 +247,11 @@ class CommandFilter(MessageFilter):
     # end def
 
     @username.setter
-    def username(self, value: str):
+    def username(self, value: str) -> None:
+        if self._username == value:
+            # no need to waste resources here.
+            return
+        # end if
         self._username = value
         self._command_strings = tuple(self._yield_commands(command=self._command, username=value))
     # end def
@@ -276,9 +283,10 @@ class CommandFilter(MessageFilter):
         # end for
     # end def _yield_commands
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        if not super().match(update=update, required_keywords=['text']):
-            return None
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        super().match(update=update)
+        if not self._has_required_keywords(update.message, self.required_message_keywords):
+            raise NoMatch('message not matching the required keywords')
         # end if
 
         txt = update.message.text.strip()
@@ -302,32 +310,3 @@ class CommandFilter(MessageFilter):
     # end def
 # end class
 
-
-class FilterHolder(object):
-    def on_update(self, *required_keywords):
-        """
-        Decorator to register a function to receive updates.
-
-        Usage:
-            >>> @app.on_update
-            >>> def foo(update):
-            >>>     assert isinstance(update, Update)
-            >>>     # do stuff with the update
-            >>>     # you can use app.bot to access the bot's messages functions
-        """
-        def on_update_inner(function):
-            return self.add_update_listener(function, required_keywords=required_keywords)
-        # end def
-        if (
-            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str)  # not string -> must be function
-        ):
-            # @on_update
-            function = required_keywords[0]
-            required_keywords = None
-            return on_update_inner(function)  # not string -> must be function
-        # end if
-        # -> else: *required_update_keywords are the strings
-        # @on_update("update_id", "message", "whatever")
-        return on_update_inner  # let that function be called again with the function.
-    # end def
