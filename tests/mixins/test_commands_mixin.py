@@ -6,13 +6,13 @@ from flask import Flask
 from luckydonaldUtils.logger import logging
 from pytgbot.api_types.receivable.updates import Update
 
-from teleflask.server.mixins import BotCommandsMixin
+from teleflask.server.mixins import UpdatesMixin
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
 
 
-class BotCommandsMixinMockup(BotCommandsMixin):
+class BotCommandsMixinMockup(UpdatesMixin):
     def __init__(self, callback_status, *args, **kwargs):
         self.callback_status = callback_status  # extra dict for callbacks storage, to be checked by tests
         super().__init__(*args, **kwargs)

@@ -6,13 +6,13 @@ from typing import List
 
 from pytgbot.api_types.receivable.updates import Update
 
-from .filters import UpdateFilter, Filter, NoMatch, MessageFilter
+from .filters import UpdateFilter, Filter, NoMatch, MessageFilter, CommandFilter
 from ..exceptions import AbortProcessingPlease
 from .abstact import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
 from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
-__all__ = ['BotCommandsMixin', 'RegisterBlueprintsMixin', 'StartupMixin', 'UpdatesMixin']
+__all__ = ['RegisterBlueprintsMixin', 'StartupMixin', 'UpdatesMixin']
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +95,23 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         :params required_keywords: Optionally: Specify attribute the message needs to have.
     """
 
+    on_command = CommandFilter.decorator
+    on_command.__doc__ = """
+        Decorator to register a command.
+
+        Usage:
+            >>> @app.command("foo")
+            >>> def foo(update, text):
+            >>>     assert isinstance(update, Update)
+            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
+
+            If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+
+        :param command: the string of a command
+    """
+    command = on_command
+    command.__doc__ = "Alias of @on_command:\n\n" + on_command.__doc__
+
     def register_handler(self, event_handler: Filter):
         """
         Adds an listener for any update type.
@@ -118,7 +135,6 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
                                   Must be a list.
         :return: the function, unmodified
         """
-
 
         logging.debug("adding handler to listeners")
         self.update_listeners.append(event_handler)  # list of lists. Outer list = OR, inner = AND
@@ -179,237 +195,6 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
     def do_startup(self):  # pragma: no cover
         super().do_startup()
     # end def
-# end class
-
-
-class BotCommandsMixin(TeleflaskMixinBase, AbstractBotCommands):
-    """
-    Add this to get commands.
-
-    After adding this mixin to the TeleflaskBase you will get:
-
-    `add_command` to add functions
-    `remove_command` to remove them again.
-    `@command` decorator as alias to `add_command`
-    `@on_command` decorator as alias to `@command`
-
-    Example:
-        This is the function we got:
-
-        >>> def foobar(update, text):
-        >>>    assert isinstance(update, Update)
-        >>>    text_to_send = "Your command has"
-        >>>    text_to_send += "no argument." if text is None else ("the following args: " + text)
-        >>>    app.bot.send_message(update.message.chat.id, text=text_to_send)
-
-        Now we can add it like this:
-
-        >>> app.add_command("command", foobar)
-
-        And remove it again:
-
-        >>> app.remove_command(command="command")
-        or
-        >>> app.remove_command(function=foobar)
-
-        You can also use the handy decorator:
-
-        >>> @app.command("command")
-        >>> def foobar(update, text):
-        >>>     ...  # like above
-    """
-    def __init__(self, *args, **kwargs):
-        self.commands = dict()  # 'cmd': (fuction, exclusive:bool)
-        super(BotCommandsMixin, self).__init__(*args, **kwargs)
-    # end def
-
-    def on_command(self, command, exclusive=False):
-        """
-        Decorator to register a command.
-
-        :param command: The command to be registered. Omit the slash.
-        :param exclusive: Stop processing the update further, so no other listenere will be called if this command triggered.
-
-        Usage:
-            >>> @app.on_command("foo")
-            >>> def foo(update, text):
-            >>>     assert isinstance(update, Update)
-            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
-
-            If you now write "/foo hey" to the bot, it will reply with "bar:hey"
-
-            You can set to ignore other registered listeners to trigger.
-
-            >>> @app.on_command("bar", exclusive=True)
-            >>> def bar(update, text)
-            >>>     return "Bar command happened."
-
-            >>> @app.on_command("bar")
-            >>> def bar2(update, text)
-            >>>     return "This function will never be called."
-
-        @on_command decorator. Actually is an alias to @command.
-        :param command: the string of a command
-        """
-        return self.command(command, exclusive=exclusive)
-    # end if
-
-    def command(self, command, exclusive=False):
-        """
-        Decorator to register a command.
-
-        Usage:
-            >>> @app.command("foo")
-            >>> def foo(update, text):
-            >>>     assert isinstance(update, Update)
-            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
-
-            If you now write "/foo hey" to the bot, it will reply with "bar:hey"
-
-        :param command: the string of a command
-        """
-        def register_command(func):
-            self.add_command(command, func, exclusive=exclusive)
-            return func
-        return register_command
-    # end def
-
-    def add_command(self, command, function, exclusive=False):
-        """
-        Adds `/command` and `/command@bot`
-        (also the iOS urls `command:///command` and `command:///command@bot`)
-
-        Will overwrite existing commands.
-
-        Arguments to the functions decorated will be (update, text)
-            - update: The update from telegram. :class:`pytgbot.api_types.receivable.updates.Update`
-            - text: The text after the command (:class:`str`), or None if there was no text.
-        Also see :def:`BotCommandsMixin._execute_command()`
-
-        :param command: The command
-        :param function:  The function to call. Will be called with the update and the text after the /command as args.
-        :return: Nothing
-        """
-        for cmd in self._yield_commands(command):
-            if cmd in self.commands:
-                raise AssertionError(
-                    'Command function mapping is overwriting an existing command: {!r} would overwrite {}.'.format(
-                        command, cmd
-                    )
-                )
-            self.commands[cmd] = (function, exclusive)
-        # end for
-    # end def add_command
-
-    def remove_command(self, command=None, function=None):
-        """
-        :param command: remove them by command, e.g. `test`.
-        :param function: remove them by function
-        :return:
-        """
-        if command:
-            for cmd in self._yield_commands(command):
-                if cmd not in self.commands:
-                    continue
-                # end if
-                logger.debug("Deleting command {cmd!r}: {func}".format(cmd=cmd, func=self.commands[cmd]))
-                del self.commands[cmd]
-            # end for
-        # end if
-        if function:
-            for key, value in list(self.commands.items()):  # list to allow deletion
-                func, exclusive = value
-                if func == function:
-                    del self.commands[key]
-                # end if
-            # end for
-        # end if
-        if not command and not function:
-            raise ValueError("You have to specify a command or a function to remove. Or both.")
-        # end if
-    # end def remove_command
-
-    def process_update(self, update):
-        """
-        If the message is a registered command it will be called.
-        Arguments to the functions will be (update, text)
-            - update: The :class:`pytgbot.api_types.receivable.updates.Update`
-            - text: The text after the command, or None if there was no text.
-        Also see ._execute_command()
-
-        :param update: incoming telegram update.
-        :return: nothing.
-        """
-        assert isinstance(update, Update)
-        if update.message and update.message.text:
-            txt = update.message.text.strip()
-            func = None
-            if txt in self.commands:
-                logger.debug("Running command {input} (no text).".format(input=txt))
-                func, exclusive = self.commands[txt]
-                try:
-                    self.process_result(update, func(update, None))
-                except AbortProcessingPlease as e:
-                    logger.debug('Asked to stop processing updates.')
-                    if e.return_value:
-                        self.process_result(update, e.return_value)
-                    # end if
-                    return  # not calling super().process_update(update)
-                except Exception:
-                    logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))
-                # end try
-            elif " " in txt and txt.split(" ")[0] in self.commands:
-                cmd, text = tuple(txt.split(" ", maxsplit=1))
-                logger.debug("Running command {cmd} (text={input!r}).".format(cmd=cmd, input=txt))
-                func, exclusive = self.commands[cmd]
-                try:
-                    self.process_result(update, func(update, text.strip()))
-                except AbortProcessingPlease as e:
-                    logger.debug('Asked to stop processing updates.')
-                    if e.return_value:
-                        self.process_result(update, e.return_value)
-                    # end if
-                    return  # not calling super().process_update(update)
-                except Exception:
-                    logger.exception("Failed calling command {cmd!r} ({func}):".format(cmd=txt, func=func))
-                # end try
-            else:
-                logging.debug("No fitting registered command function found.")
-                exclusive = False  # so It won't abort.
-            # end if
-            if exclusive:
-                logger.debug(
-                    "Command function {func!r} ({cmd}) marked exclusive, stopping further processing.".format(
-                        func=func, cmd=cmd
-                    )
-                )
-                return  # not calling super().process_update(update)
-            # end if
-        # end if
-        super().process_update(update)
-    # end def process_update
-
-    def do_startup(self):  # pragma: no cover
-        super().do_startup()
-    # end if
-
-    def _yield_commands(self, command):
-        """
-        Yields possible strings with the given commands.
-        Like `/command` and `/command@bot`.
-
-        :param command: The command to construct.
-        :return:
-        """
-        for syntax in (
-                "/{command}",  # without username
-                "/{command}@{username}",  # with username
-                "command:///{command}",  # iOS represents commands like this
-                "command:///{command}@{username}"  # iOS represents commands like this
-        ):
-            yield syntax.format(command=command, username=self.username)
-        # end for
-    # end def _yield_commands
 # end class
 
 

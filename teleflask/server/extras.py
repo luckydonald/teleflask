@@ -10,7 +10,7 @@ __all__ = ["Teleflask"]
 logger = logging.getLogger(__name__)
 
 
-class Teleflask(StartupMixin, BotCommandsMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBase):
+class Teleflask(StartupMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBase):
     """
     This is the full package, including all provided mixins.
 
