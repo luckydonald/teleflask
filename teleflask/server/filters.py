@@ -41,7 +41,11 @@ class Filter(object):
     type: str
     func: Union[Callable, DEFAULT_CALLABLE]
 
-    def __init__(self, type: str, func: Union[Callable, DEFAULT_CALLABLE]):
+    def __init__(
+        self,
+        type: str,
+        func: Union[Callable, DEFAULT_CALLABLE],
+    ):
         """
         :param type: The type of this class.
         :param func: The function registered.
@@ -98,7 +102,10 @@ class UpdateFilter(Filter):
 
     required_update_keywords: Union[List[str], None]
 
-    def __init__(self, func: Callable, required_update_keywords: Union[List[str], None] = None):
+    def __init__(
+        self,
+        func: Callable, required_update_keywords: Union[List[str], None] = None,
+    ):
         super().__init__(self.TYPE, func=func)
         self.required_update_keywords = self._prepare_required_keywords(required_update_keywords)
     # end def
@@ -248,7 +255,11 @@ class MessageFilter(UpdateFilter):
     MATCH_RESULT_TYPE = None
     func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], required_message_keywords: Union[List[str], None] = None):
+    def __init__(
+        self,
+        func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        required_message_keywords: Union[List[str], None] = None,
+    ):
         super().__init__(func=func, required_update_keywords=['message'])
         self.required_message_keywords = self._prepare_required_keywords(required_message_keywords)
     # end def
@@ -357,7 +368,12 @@ class CommandFilter(MessageFilter):
     command_strings: Tuple[str, ...]
     _command_strings: Union[Tuple[str, ...], None]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: Union[str, None]):
+    def __init__(
+        self,
+        func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        command: str,
+        username: Union[str, None],
+    ):
         super().__init__(func=func, required_message_keywords=['text'])
         self._command = command
         self._username = username
