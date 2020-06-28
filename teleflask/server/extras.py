@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 
+from pytgbot.api_types.receivable.updates import Update
+
+from exceptions import AbortProcessingPlease
 from .base import TeleflaskBase
-from .mixins import StartupMixin, UpdatesMixin, RegisterBlueprintsMixin
+from .filters import MessageFilter, UpdateFilter, CommandFilter, NoMatch, Filter
 from luckydonaldUtils.logger import logging
 
 __author__ = 'luckydonald'
@@ -10,7 +13,7 @@ __all__ = ["Teleflask"]
 logger = logging.getLogger(__name__)
 
 
-class Teleflask(StartupMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBase):
+class BotServer(TeleflaskBase):
     """
     This is the full package, including all provided mixins.
 
@@ -97,12 +100,184 @@ class Teleflask(StartupMixin, UpdatesMixin, RegisterBlueprintsMixin, TeleflaskBa
 
         :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
         """
+
+        self.startup_listeners = list()
+        self.startup_already_run = False
+
+        self.blueprints = {}
+        self._blueprint_order = []
+
         super().__init__(
             api_key=api_key, app=app, blueprint=blueprint, hostname=hostname, hookpath=hookpath,
             debug_routes=debug_routes, disable_setting_webhook_telegram=disable_setting_webhook_telegram,
             disable_setting_webhook_route=disable_setting_webhook_route, return_python_objects=return_python_objects,
         )
 
+        def register_handler(self, event_handler: Filter):
+            """
+            Adds an listener for any update type.
+            You provide a Filter for them as parameter, it also contains the function.
+            No error will be raised if it is already registered. In that case a warning will be logged,
+            but nothing else will happen, and the function is not added.
+
+            Examples:
+                >>> register_handler(UpdateFilter(func, required_keywords=["update_id", "message"]))
+                # will call  func(msg)  for all updates which are message (have the message attribute) and have a update_id.
+
+                >>> register_handler(UpdateFilter(func, required_keywords=["inline_query"]))
+                # calls   func(msg)     for all updates which are inline queries (have the inline_query attribute)
+
+                >>> register_handler(UpdateFilter(func, required_keywords=None))
+                >>> register_handler(UpdateFilter(func))
+                # allows all messages.
+
+            :param function:  The function to call. Will be called with the update and the message as arguments
+            :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
+                                      Must be a list.
+            :return: the function, unmodified
+            """
+
+            logging.debug("adding handler to listeners")
+            self.update_listeners.append(event_handler)  # list of lists. Outer list = OR, inner = AND
+            return event_handler
+        # end def
+
+        def remove_handler(self, event_handler):
+            """
+            Removes an handler from the update listener list.
+            No error will be raised if it is already registered. In that case a warning will be logged,
+            but noting else will happen.
+
+
+            :param function:  The function to remove
+            :return: the function, unmodified
+            """
+            try:
+                self.update_listeners.remove(event_handler)
+            except ValueError:
+                logger.warning("listener already removed.")
+            # end if
+        # end def
+
+        def remove_handled_func(self, func):
+            """
+            Removes an function from the update listener list.
+            No error will be raised if it is no longer registered. In that case noting else will happen.
+
+            :param function:  The function to remove
+            :return: the function, unmodified
+            """
+            listerner: Filter
+            self.update_listeners = [listerner for listerner in self.update_listeners if listerner.func != func]
+        # end def
+
+        def process_update(self, update):
+            """
+            Iterates through self.update_listeners, and calls them with (update, app).
+
+            No try catch stuff is done, will fail instantly, and not process any remaining listeners.
+
+            :param update: incoming telegram update.
+            :return: nothing.
+            """
+            assert isinstance(update, Update)  # Todo: non python objects
+            filter: Filter
+            for filter in self.update_listeners:
+                try:
+                    # check if the Filter matches
+                    match_result = filter.match(update)
+                    # call the handler
+                    result = filter.call_handler(update=update, match_result=match_result)
+                    # send the message
+                    self.process_result(update, result)  # this will be TeleflaskMixinBase.process_result()
+                except NoMatch as e:
+                    logger.debug(f'not matching filter {filter!s}.')
+                except AbortProcessingPlease as e:
+                    logger.debug('Asked to stop processing updates.')
+                    if e.return_value:
+                        self.process_result(update, e.return_value)  # this will be TeleflaskMixinBase.process_result()
+                    # end if
+                    return  # not calling super().process_update(update)
+                except Exception:
+                    logger.exception(f"Error executing the update listener with {filter!s}: {filter!r}")
+                # end try
+            # end for
+            super().process_update(update)
+        # end def
+
+        def on_startup(self, func):
+            """
+            Decorator to register a function to receive updates.
+
+            Usage:
+                >>> @app.on_startup
+                >>> def foo():
+                >>>     print("doing stuff on boot")
+
+            """
+            return self.add_startup_listener(func)
+        # end def
+
+        def add_startup_listener(self, func):
+            """
+            Usage:
+                >>> def foo():
+                >>>     print("doing stuff on boot")
+                >>> app.add_startup_listener(foo)
+
+            :param func:
+            :return:
+            """
+            if func not in self.startup_listeners:
+                self.startup_listeners.append(func)
+                if self.startup_already_run:
+                    func()
+                # end if
+            else:
+                logger.warning("listener already added.")
+            # end if
+            return func
+        # end def
+
+        def remove_startup_listener(self, func):
+            if func in self.startup_listeners:
+                self.startup_listeners.remove(func)
+            else:
+                logger.warning("listener already removed.")
+            # end if
+            return func
+        # end def
+
+        def register_tblueprint(self, tblueprint, **options):
+            """
+            Registers a `TBlueprint` on the application.
+            """
+            first_registration = False
+            if tblueprint.name in self.blueprints:
+                assert self.blueprints[tblueprint.name] is tblueprint, \
+                    'A teleflask blueprint\'s name collision occurred between %r and ' \
+                    '%r.  Both share the same name "%s".  TBlueprints that ' \
+                    'are created on the fly need unique names.' % \
+                    (tblueprint, self.blueprints[tblueprint.name], tblueprint.name)
+            else:
+                self.blueprints[tblueprint.name] = tblueprint
+                self._blueprint_order.append(tblueprint)
+                first_registration = True
+            tblueprint.register(self, options, first_registration)
+        # end def
+
+        def iter_blueprints(self):
+            """
+            Iterates over all blueprints by the order they were registered.
+            """
+            return iter(self._blueprint_order)
+        # end def
+
+        on_update = UpdateFilter.decorator
+        on_message = MessageFilter.decorator
+        on_command = CommandFilter.decorator
+
+        command = on_command
     # end def
 # end class
 
@@ -158,3 +333,5 @@ class PollingTeleflask(Teleflask):
         telegram_proxy_process.start()
     # end def
 # end class
+
+Teleflask = BotServer
