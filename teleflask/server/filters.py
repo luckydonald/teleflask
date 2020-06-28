@@ -291,11 +291,12 @@ class MessageFilter(UpdateFilter):
 
         def decorator_inner(function):
             if teleflask_or_tblueprint:
-                filter = cls(func=function, required_update_keywords=required_keywords)
+                # we don't want to register later
+                filter = cls(func=function, required_message_keywords=required_keywords)
                 teleflask_or_tblueprint.register_handler(filter)
             # end if
             handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
-            filter = cls(func=function, required_update_keywords=required_keywords)
+            filter = cls(func=function, required_message_keywords=required_keywords)
             handlers.append(filter)
             setattr(function, _HANDLERS_ATTRIBUTE, handlers)
             return function
