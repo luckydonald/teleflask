@@ -7,6 +7,7 @@ from luckydonaldUtils.logger import logging
 from pytgbot.api_types.receivable.updates import Update
 
 from teleflask.server.mixins import UpdatesMixin
+from teleflask.server.filters import Filter, CommandFilter
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
@@ -16,7 +17,6 @@ class BotCommandsMixinMockup(UpdatesMixin):
     def __init__(self, callback_status, *args, **kwargs):
         self.callback_status = callback_status  # extra dict for callbacks storage, to be checked by tests
         super().__init__(*args, **kwargs)
-
     # end def
 
     def process_result(self, update, result):
@@ -39,6 +39,7 @@ class BotCommandsMixinMockup(UpdatesMixin):
 # end class
 
 
+# noinspection DuplicatedCode
 class SomeUpdatesMixinTestCase(unittest.TestCase):
     """
     `@app.on_update` decorator
@@ -57,7 +58,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
     def tearDown(self):
         print("tearDown")
         del self.callbacks_status
-        del self.mixin.commands
+        del self.mixin.update_listeners
         del self.mixin
     # end def
 
@@ -148,8 +149,8 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
     })
 
     def test__on_command__command(self):
-        self.assertNotIn("on_command", self.callbacks_status, "no data => not executed yet")
-        self.assertDictEqual(self.mixin.commands, {}, "empty listener list => not added yet")
+        self.assertListEqual(self.mixin.update_listeners, [], "empty listener list => not added yet")
+        self.assertEqual(0, len(self.mixin.update_listeners), 'has update_listerner now')
 
         @self.mixin.command('test')
         def on_command__callback(update, text):
@@ -158,20 +159,21 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         # end def
 
         self.assertIsNotNone(on_command__callback, "function is not None => decorator returned something")
-        self.assertIn('/test', self.mixin.commands.keys(), 'command /test in dict keys => listener added')
-        self.assertIn('/test@UnitTest', self.mixin.commands, 'command /test@{bot} in dict keys => listener added')
-        self.assertEqual(self.mixin.commands['/test'], (on_command__callback, False), 'command /test has correct function')
-        self.assertEqual(self.mixin.commands['/test@UnitTest'], (on_command__callback, False), 'command /test has correct function')
+        self.assertEqual(1, len(self.mixin.update_listeners), 'has update_listerner now')
+        listener = self.mixin.update_listeners[0]
+        self.assertIsInstance(listener, Filter)
+        self.assertIsInstance(listener, CommandFilter)
+        self.assertEqual('test', listener.command)
+        self.assertIn('/test', listener.command_strings, 'command /test in dict keys => listener added')
+        self.assertIn('/test@UnitTest', listener.command_strings, 'command /test@{bot} in dict keys => listener added')
         self.assertNotIn("on_command", self.callbacks_status, "no data => not executed yet")
 
         self.mixin.process_update(self.command_test)
 
         self.assertIn("on_command", self.callbacks_status, "has data => did execute")
-        self.assertEqual(self.callbacks_status["on_command"], self.command_test,
-                         "has update => successfully executed given function")
+        self.assertEqual(self.callbacks_status["on_command"], self.command_test, "has update => successfully executed given function")
         self.assertIn("processed_update", self.callbacks_status, "executed result collection")
-        self.assertEqual(self.callbacks_status["processed_update"],
-                         (self.command_test, self.command_test))  # update, result
+        self.assertEqual(self.callbacks_status["processed_update"], self.command_test, self.command_test)  # update, result
     # end def
 
     def test__on_command__command_reply(self):
@@ -188,8 +190,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
         self.assertIsNotNone(on_command__callback, "function is not None => decorator returned something")
         self.assertIn('/test', self.mixin.commands.keys(), 'command /test in dict keys => listener added')
         self.assertIn('/test@UnitTest', self.mixin.commands, 'command /test@{bot} in dict keys => listener added')
-        self.assertEqual(self.mixin.commands['/test'], (on_command__callback, False),
-                         'command /test has correct function')
+        self.assertEqual(self.mixin.commands['/test'], (on_command__callback, False), 'command /test has correct function')
         self.assertEqual(self.mixin.commands['/test@UnitTest'], (on_command__callback, False),
                          'command /test has correct function')
         self.assertNotIn("on_command", self.callbacks_status, "no data => not executed yet")
