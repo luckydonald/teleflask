@@ -6,13 +6,13 @@ from typing import List
 
 from pytgbot.api_types.receivable.updates import Update
 
-from .filters import UpdateFilter, Filter, NoMatch
+from .filters import UpdateFilter, Filter, NoMatch, MessageFilter
 from ..exceptions import AbortProcessingPlease
 from .abstact import AbstractUpdates, AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup
 from .base import TeleflaskMixinBase
 
 __author__ = 'luckydonald'
-__all__ = ['BotCommandsMixin', 'MessagesMixin', 'RegisterBlueprintsMixin', 'StartupMixin', 'UpdatesMixin']
+__all__ = ['BotCommandsMixin', 'RegisterBlueprintsMixin', 'StartupMixin', 'UpdatesMixin']
 logger = logging.getLogger(__name__)
 
 
@@ -59,8 +59,41 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
             >>>     assert isinstance(update, Update)
             >>>     # do stuff with the update
             >>>     # you can use app.bot to access the bot's messages functions
-        """
-    # end def
+
+        :params required_keywords: Optionally: Specify attribute the message needs to have.
+    """
+
+    on_message = MessageFilter.decorator
+    on_message.__doc__ = """
+        Decorator to register a listener for a message event.
+        You can give optionally give one or multiple strings. The message will need to have all this elements.
+        If you leave them out, you'll get all messages, unfiltered.
+
+        Usage:
+            >>> @app.on_message
+            >>> def foo(update, msg):
+            >>>     # all messages
+            >>>     assert isinstance(update, Update)
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent any message!")
+
+            >>> @app.on_message("text")
+            >>> def foo(update, msg):
+            >>>     # all messages which are text messages (have the text attribute)
+            >>>     assert isinstance(update, Update)
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent text!")
+
+            >>> @app.on_message("photo", "sticker")
+            >>> def foo(update, msg):
+            >>>     # all messages which are photos (have the photo attribute) and have a caption
+            >>>     assert isinstance(update, Update)
+            >>>     assert isinstance(msg, Message)
+            >>>     app.bot.send_message(msg.chat.id, "you sent a photo with caption!")
+
+
+        :params required_keywords: Optionally: Specify attribute the message needs to have.
+    """
 
     def register_handler(self, event_handler: Filter):
         """
@@ -140,208 +173,6 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
                 logger.exception(f"Error executing the update listener with {filter!s}: {filter!r}")
             # end try
         # end for
-        super().process_update(update)
-    # end def process_update
-
-    def do_startup(self):  # pragma: no cover
-        super().do_startup()
-    # end def
-# end class
-
-
-class MessagesMixin(TeleflaskMixinBase, AbstractMessages):
-    """
-    Add this to get messages.
-
-    After adding this mixin to the TeleflaskBase you will get:
-
-    `add_message_listener` to add functions
-    `remove_message_listener` to remove them again.
-    `@on_message` decorator as alias to `add_message_listener`
-
-    Example:
-        This is the function we got:
-
-        >>> def foobar(update, msg):
-        >>>    assert isinstance(update, Update)
-        >>>    assert isinstance(msg, Message)
-
-        Now we can add it like this:
-
-        >>> app.add_message_listener(foobar)
-
-        And remove it again:
-
-        >>> app.remove_message_listener()
-
-        You can also use the handy decorator:
-
-        >>> @app.on_message("text")  # all messages where  msg.text  is existent.
-        >>> def foobar(update, msg):
-        >>>     ...  # like above
-        Would be equal to:
-        >>> app.add_message_listener(foobar, ["text"])
-    """
-
-    def __init__(self, *args, **kwargs):
-        self.message_listeners = dict()  # key: func, value: [ ["arg", "arg2"], ["arg2"] ]
-        super(MessagesMixin, self).__init__(*args, **kwargs)
-    # end def
-
-    def on_message(self, *required_keywords):
-        """
-        Decorator to register a listener for a message event.
-        You can give optionally give one or multiple strings. The message will need to have all this elements.
-        If you leave them out, you'll get all messages, unfiltered.
-
-        Usage:
-            >>> @app.on_message
-            >>> def foo(update, msg):
-            >>>     # all messages
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent any message!")
-
-            >>> @app.on_message("text")
-            >>> def foo(update, msg):
-            >>>     # all messages which are text messages (have the text attribute)
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent text!")
-
-            >>> @app.on_message("photo", "sticker")
-            >>> def foo(update, msg):
-            >>>     # all messages which are photos (have the photo attribute) and have a caption
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent a photo with caption!")
-
-
-        :params required_keywords: Optionally: Specify attribute the message needs to have.
-        """
-        def on_message_inner(function):
-            return self.add_message_listener(function, required_keywords=required_keywords)
-        # end def
-
-        if (len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str) # not string -> must be function
-             ):
-            # @on_message
-            function = required_keywords[0]
-            required_keywords = None
-            return on_message_inner(function=function)  # not string -> must be function
-        # end if
-        # -> else: *required_keywords are the strings
-        # @on_message("text", "sticker", "whatever")
-        return on_message_inner  # let that function be called again with the function.
-    # end def
-
-    def add_message_listener(self, function, required_keywords=None):
-        """
-        Adds an listener for updates with messages.
-        You can filter them if you supply a list of names of attributes which all need to be present.
-        No error will be raised if it is already registered. In that case a warning will be logged,
-        but nothing else will happen, and the function is not added.
-
-        Examples:
-            >>> add_message_listener(func, required_keywords=["sticker", "caption"])
-            # will call  func(msg)  for all messages which are stickers (have the sticker attribute) and have a caption.
-
-            >>> add_message_listener(func)
-            # allows all messages.
-
-        :param function:  The function to call. Will be called with the update and the message as arguments
-        :param required_keywords: If that evaluates to False (None, empty list, etc...) the filter is not applied, all messages are accepted.
-        :return: the function, unmodified
-        """
-        if required_keywords is None:
-            self.message_listeners[function] = [None]
-            logging.debug("listener required keywords set to allow all.")
-            return function
-        # end def
-
-        # check input, make a list out of what we might get.
-        if isinstance(required_keywords, str):
-            required_keywords = [required_keywords]  # str => [str]
-        elif isinstance(required_keywords, tuple):
-            required_keywords = list(required_keywords)  # (str,str) => [str,str]
-        # end if
-        assert isinstance(required_keywords, list)
-        for keyword in required_keywords:
-            assert isinstance(keyword, str)  # required_keywords must all be type str
-        # end if
-
-        if function not in self.message_listeners:
-            # function does not exists, create the keywords.
-            logging.debug("adding function to listeners")
-            self.message_listeners[function] = [required_keywords]  # list of lists. Outer list = OR, inner = AND
-        else:
-            # function already exists, add/merge the keywords.
-            if None in self.message_listeners[function]:
-                # None => allow all, so we don't need to add a filter
-                logger.debug('listener not updated, as it is already wildcard')
-            elif required_keywords in self.message_listeners[function]:
-                # the keywords already are required, we don't need to add a filter
-                logger.debug("listener required keywords already in {!r}".format(self.message_listeners[function]))
-            else:
-                self.message_listeners[function].append(required_keywords)
-                logger.debug("listener required keywords updated to {!r}".format(self.message_listeners[function]))
-            # end if
-        # end if
-        return function
-    # end def add_message_listener
-
-    def remove_message_listeners(self, func):
-        """
-        Removes an function from the message listener list.
-        No error will be raised if it is already registered. In that case a warning will be logged,
-        but noting else will happen.
-
-
-        :param function:  The function to remove
-        :return: the function, unmodified
-        """
-        if func in self.message_listeners:
-            del self.message_listeners[func]
-        else:
-            logger.warning("listener already removed.")
-        # end if
-        return func
-    # end def
-
-    def process_update(self, update):
-        """
-        Iterates through self.message_listeners, and calls them with (update, app).
-
-        No try catch stuff is done, will fail instantly, and not process any remaining listeners.
-
-        :param update: incoming telegram update.
-        :return: nothing.
-        """
-        assert isinstance(update, Update)
-        if update.message:
-            msg = update.message
-            for listener, required_fields_array in self.message_listeners.items():
-                for required_fields in required_fields_array:
-                    try:
-                        if not required_fields or all([hasattr(msg, f) and getattr(msg, f) for f in required_fields]):
-                            # either filters evaluates to False, (None, empty list etc) which means it should not filter
-                            # or it has filters, than we need to check if that attributes really exist.
-                            self.process_result(update, listener(update, update.message))
-                            break  # stop processing other required_fields combinations
-                        # end if
-                    except AbortProcessingPlease as e:
-                        logger.debug('Asked to stop processing updates.')
-                        if e.return_value:
-                            self.process_result(update, e.return_value)
-                        # end if
-                        return  # not calling super().process_update(update)
-                    except Exception:
-                        logger.exception("Error executing the update listener {func}.".format(func=listener))
-                    # end try
-                # end for
-            # end for
-        # end if
         super().process_update(update)
     # end def process_update
 
