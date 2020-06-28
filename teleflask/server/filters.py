@@ -450,51 +450,34 @@ class CommandFilter(MessageFilter):
     # end def
 
     @classmethod
-    def decorator(cls, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None], *required_keywords):
+    def decorator(cls, command, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None] = None):
         """
-        Decorator to register a function to receive updates.
+        Decorator to register a command.
 
         Usage:
-            >>> app = Teleflask(API_KEY)
+            >>> @app.command("foo")
+            >>> def foo(update, text):
+            >>>     assert isinstance(update, Update)
+            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
 
-            >>> @app.on_update
-            >>> @app.on_update("update_id", "message", "whatever")
-            >>> def foo(update):
-            ...     assert isinstance(update, Update)
-            ...     # do stuff with the update
-            ...     # you can use app.bot to access the bot's messages functions
-        Or, if you wanna go do it directly for some strange reason:
-            >>> @UpdateFilter.decorator(app)
-            >>> @UpdateFilter.decorator(app)("update_id", "message", "whatever")
-            >>> def foo(update):
-            ...     pass
+        If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+
+        :param command: the string of a command, without the slash.
         """
 
         def decorator_inner(function):
             if teleflask_or_tblueprint:
                 # we don't want to register later
-                filter = cls(func=function, command=command)
+                filter = cls(func=function, command=command, username=teleflask_or_tblueprint.username, teleflask_or_tblueprint=teleflask_or_tblueprint)
                 teleflask_or_tblueprint.register_handler(filter)
             # end if
             handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
-            filter = cls(func=function, required_message_keywords=required_keywords)
+            filter = cls(func=function, command=command, username=None)
             handlers.append(filter)
             setattr(function, _HANDLERS_ATTRIBUTE, handlers)
             return function
-
         # end def
 
-        if (
-            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str)  # not string -> must be function
-        ):
-            # @on_update
-            function = required_keywords[0]
-            required_keywords = None
-            return decorator_inner(function)  # not string -> must be function
-        # end if
-        # -> else: all `*required_keywords` are the strings
-        # @on_update("update_id", "message", "whatever")
         return decorator_inner  # let that function be called again with the function.
     # end def
 
