@@ -50,67 +50,10 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
     # end def
 
     on_update = UpdateFilter.decorator
-    on_update.__doc__ = """
-        Decorator to register a function to receive updates.
-
-        Usage:
-            >>> @app.on_update
-            >>> def foo(update):
-            >>>     assert isinstance(update, Update)
-            >>>     # do stuff with the update
-            >>>     # you can use app.bot to access the bot's messages functions
-
-        :params required_keywords: Optionally: Specify attribute the message needs to have.
-    """
-
     on_message = MessageFilter.decorator
-    on_message.__doc__ = """
-        Decorator to register a listener for a message event.
-        You can give optionally give one or multiple strings. The message will need to have all this elements.
-        If you leave them out, you'll get all messages, unfiltered.
-
-        Usage:
-            >>> @app.on_message
-            >>> def foo(update, msg):
-            >>>     # all messages
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent any message!")
-
-            >>> @app.on_message("text")
-            >>> def foo(update, msg):
-            >>>     # all messages which are text messages (have the text attribute)
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent text!")
-
-            >>> @app.on_message("photo", "sticker")
-            >>> def foo(update, msg):
-            >>>     # all messages which are photos (have the photo attribute) and have a caption
-            >>>     assert isinstance(update, Update)
-            >>>     assert isinstance(msg, Message)
-            >>>     app.bot.send_message(msg.chat.id, "you sent a photo with caption!")
-
-
-        :params required_keywords: Optionally: Specify attribute the message needs to have.
-    """
-
     on_command = CommandFilter.decorator
-    on_command.__doc__ = """
-        Decorator to register a command.
 
-        Usage:
-            >>> @app.command("foo")
-            >>> def foo(update, text):
-            >>>     assert isinstance(update, Update)
-            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
-
-            If you now write "/foo hey" to the bot, it will reply with "bar:hey"
-
-        :param command: the string of a command
-    """
     command = on_command
-    command.__doc__ = "Alias of @on_command:\n\n" + on_command.__doc__
 
     def register_handler(self, event_handler: Filter):
         """
