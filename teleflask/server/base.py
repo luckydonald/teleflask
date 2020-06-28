@@ -17,38 +17,7 @@ logger = logging.getLogger(__name__)
 _self_jsonify = _class_self_decorate("jsonify")  # calls self.jsonify(...) with the result of the decorated function.
 
 
-class TeleflaskMixinBase(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def process_update(self, update):
-        """
-        This method is called from the flask webserver.
-
-        Any Mixin implementing must call super().process_update(update).
-        So catch exceptions in your mixin's code.
-
-        :param update: The Telegram update
-        :type  update: pytgbot.api_types.receivable.updates.Update
-        :return:
-        """
-        return
-    # end def
-
-    @abc.abstractmethod
-    def do_startup(self):
-        """
-        This method is called on bot/server startup.
-        To be precise, `TeleflaskBase.init_app()` will call it when done.
-
-        Any Mixin implementing **must** call `super().do_startup(update)`.
-        So catch any and all exceptions in your mixin's own code.
-        :return:
-        """
-        return
-    # end def
-# end class
-
-
-class TeleflaskBase(TeleflaskMixinBase):
+class TeleflaskBase(object):
     VERSION = VERSION
     __version__ = VERSION
 
