@@ -9,7 +9,6 @@ __author__ = 'luckydonald'
 
 from pytgbot.api_types.receivable.updates import Update, Message
 
-from teleflask import Teleflask, TBlueprint
 from ..messages import Message as OldSendableMessage
 from ..new_messages import SendableMessageBase
 
@@ -159,11 +158,12 @@ class UpdateFilter(Filter):
     # end def
 
     @classmethod
-    def decorator(cls, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None], *required_keywords):
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords):
         """
         Decorator to register a function to receive updates.
 
         Usage:
+            >>> from teleflask import Teleflask, TBlueprint
             >>> app = Teleflask(API_KEY)
 
             >>> @app.on_update
@@ -280,11 +280,12 @@ class MessageFilter(UpdateFilter):
     # end def
 
     @classmethod
-    def decorator(cls, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None], *required_keywords):
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords):
         """
         Decorator to register a function to receive updates.
 
         Usage:
+            >>> from teleflask import Teleflask, TBlueprint
             >>> app = Teleflask(API_KEY)
 
             >>> @app.on_update
@@ -466,7 +467,7 @@ class CommandFilter(MessageFilter):
     # end def
 
     @classmethod
-    def decorator(cls, command, teleflask_or_tblueprint: Union[Teleflask, TBlueprint, None] = None):
+    def decorator(cls, command, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
         """
         Decorator to register a command.
 

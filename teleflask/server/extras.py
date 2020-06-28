@@ -2,7 +2,7 @@
 import os
 
 from .base import TeleflaskBase
-from .mixins import StartupMixin, BotCommandsMixin, UpdatesMixin, MessagesMixin, RegisterBlueprintsMixin
+from .mixins import StartupMixin, UpdatesMixin, RegisterBlueprintsMixin
 from luckydonaldUtils.logger import logging
 
 __author__ = 'luckydonald'

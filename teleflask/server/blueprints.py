@@ -5,7 +5,7 @@ from luckydonaldUtils.logger import logging
 
 from .abstact import AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, AbstractUpdates
 from .base import TeleflaskBase
-# from .mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
+# from .mixins import UpdatesMixin, StartupMixin
 
 __author__ = 'luckydonald'
 logger = logging.getLogger(__name__)
