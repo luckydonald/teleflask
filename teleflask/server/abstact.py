@@ -19,12 +19,17 @@ class AbstractUpdates(metaclass=ABCMeta):
     # end def
 
     @abstractmethod
-    def add_update_listener(self, function, required_keywords=None):
+    def register_handler(self, handler):
         pass
     # end def
 
     @abstractmethod
-    def remove_update_listener(self, func):
+    def remove_handler(self, handler):
+        pass
+    # end def
+
+    @abstractmethod
+    def remove_handled_func(self, func):
         pass
     # end def
 # end class

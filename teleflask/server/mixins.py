@@ -82,11 +82,11 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         logging.debug("adding handler to listeners")
         self.update_listeners.append(event_handler)  # list of lists. Outer list = OR, inner = AND
         return event_handler
-    # end def add_update_listener
+    # end def
 
-    def remove_update_listener(self, event_handler):
+    def remove_handler(self, event_handler):
         """
-        Removes an function from the update listener list.
+        Removes an handler from the update listener list.
         No error will be raised if it is already registered. In that case a warning will be logged,
         but noting else will happen.
 
@@ -99,6 +99,18 @@ class UpdatesMixin(TeleflaskMixinBase, AbstractUpdates):
         except ValueError:
             logger.warning("listener already removed.")
         # end if
+    # end def
+
+    def remove_handled_func(self, func):
+        """
+        Removes an function from the update listener list.
+        No error will be raised if it is no longer registered. In that case noting else will happen.
+
+        :param function:  The function to remove
+        :return: the function, unmodified
+        """
+        listerner: Filter
+        self.update_listeners = [listerner for listerner in self.update_listeners if listerner.func != func]
     # end def
 
     def process_update(self, update):
