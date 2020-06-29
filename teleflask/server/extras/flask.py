@@ -8,8 +8,7 @@ from pytgbot.api_types.receivable.peer import User
 from pytgbot.api_types.receivable.updates import Update
 from pytgbot.exceptions import TgApiServerException
 
-from .. import Teleserver
-from ... import VERSION
+from ... import Teleserver
 from ..utilities import _class_self_decorate
 
 __author__ = 'luckydonald'
@@ -20,9 +19,6 @@ _self_jsonify = _class_self_decorate("jsonify")  # calls self.jsonify(...) with 
 
 
 class Teleflask(Teleserver):
-    VERSION = VERSION
-    __version__ = VERSION
-
     def __init__(
         self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
         debug_routes=False, disable_setting_webhook_route=None, disable_setting_webhook_telegram=None,

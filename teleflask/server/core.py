@@ -13,6 +13,7 @@ from .blueprints import TBlueprint
 from .filters import Filter, NoMatch, UpdateFilter, MessageFilter, CommandFilter
 
 from ..exceptions import AbortProcessingPlease
+from .. import VERSION
 
 __author__ = 'luckydonald'
 
@@ -22,7 +23,11 @@ if __name__ == '__main__':
     logging.add_colored_handler(level=logging.DEBUG)
 # end if
 
+
 class Teleserver(object):
+    VERSION = VERSION
+    __version__ = VERSION
+
     """
     This is the core logic.
     You can register a bunch of listeners. Then you have to call `do_startup` and `process_update` and
