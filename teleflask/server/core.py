@@ -30,8 +30,12 @@ class Teleprocessor(object):
     __version__ = VERSION
 
     """
-    This is the core logic.
-    You can register a bunch of listeners. Then you have to call `do_startup` and `process_update` and
+    This is the core logic. Handles registration and update processing.
+    Does not handle any webserver kind of things, so you can use this very flexable.
+
+    You can register a bunch of listeners.
+    Then you have to call `do_startup` once and `process_update` with every update and you're good to go.
+
 
     You can use:
 
