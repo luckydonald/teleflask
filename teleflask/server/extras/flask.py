@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
+import requests
+from flask import request
+from pprint import pformat
 
 from luckydonaldUtils.logger import logging
 from pytgbot import Bot
@@ -539,7 +542,7 @@ class PollingTeleflask(Teleflask):
     # end def
 
     def _start_proxy_process(self):
-        from ..proxy import proxy_telegram
+        from ...proxy import proxy_telegram
         from multiprocessing import Process
         global telegram_proxy_process
         telegram_proxy_process = Process(target=proxy_telegram, args=(), kwargs=dict(
