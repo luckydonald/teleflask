@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 class BotServer(object):
     """
-    This is the full package, including all provided mixins.
+    This is the core logic.
+    You can register a bunch of listeners. Then you have to call `do_startup` and `process_update` and
 
     You can use:
 
@@ -298,8 +299,6 @@ class BotServer(object):
         """
         return iter(self._blueprint_order)
     # end def
-
-
 
     def process_result(self, update, result):
         """
@@ -742,6 +741,7 @@ class Teleflask(BotServer):
             webhook_url = existing_webhook.url
             webhook_meta = existing_webhook.to_array()
         else:
+            assert isinstance(existing_webhook, dict)
             webhook_url = existing_webhook["result"]["url"]
             webhook_meta = existing_webhook["result"]
         # end def
@@ -766,14 +766,22 @@ class Teleflask(BotServer):
 
     def do_startup(self):
         """
-        This code is executed after server boot.
+        Iterates through self.startup_listeners, and calls them.
 
-        Sets the telegram webhook (see :meth:`set_webhook_telegram(self)`)
-        and calls `super().do_setup()` for the superclass (e.g. other mixins)
+        No try catch stuff is done, will fail instantly, and not process any remaining listeners.
 
-        :return:
+        :param update:
+        :return: the last non-None result any listener returned.
         """
-        super().do_startup()  # do more registered startup actions.
+        for listener in self.startup_listeners:
+            try:
+                listener()
+            except Exception:
+                logger.exception("Error executing the startup listener {func}.".format(func=listener))
+                raise
+            # end if
+        # end for
+        self.startup_already_run = True
     # end def
 
     def hide_api_key(self, string):
@@ -1082,10 +1090,10 @@ class PollingTeleflask(Teleflask):
 
         :return:
         """
+        super().do_startup()
         if self.start_process:
             self._start_proxy_process()
         # end def
-        super().do_startup()
     # end def
 
     def _start_proxy_process(self):
