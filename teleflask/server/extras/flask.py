@@ -8,9 +8,9 @@ from pytgbot.api_types.receivable.peer import User
 from pytgbot.api_types.receivable.updates import Update
 from pytgbot.exceptions import TgApiServerException
 
-from . import Teleserver
-from .. import VERSION
-from .utilities import _class_self_decorate
+from .. import Teleserver
+from ... import VERSION
+from ..utilities import _class_self_decorate
 
 __author__ = 'luckydonald'
 __all__ = ["Teleflask", "PollingTeleflask"]
