@@ -9,6 +9,7 @@ from pytgbot import Bot
 from pytgbot.api_types.receivable.peer import User
 from pytgbot.api_types.receivable.updates import Update
 
+from .utilities import calculate_webhook_url
 from .blueprints import TBlueprint
 from .filters import Filter, NoMatch, UpdateFilter, MessageFilter, CommandFilter
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
 # end if
 
 
-class Teleserver(object):
+class Teleprocessor(object):
     VERSION = VERSION
     __version__ = VERSION
 
@@ -82,12 +83,20 @@ class Teleserver(object):
     _blueprint_order: List[TBlueprint]
 
     def __init__(
-        self, api_key, app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
-        debug_routes=False, disable_setting_webhook_telegram=None, disable_setting_webhook_route=None,
-        return_python_objects=True
+        self,
+        api_key,
+        *,
+        return_python_objects: bool = True
     ):
         """
-        A new Teleflask object.
+        This is the very core of the server.
+
+         Handles registration and update processing.
+        Does not handle any webserver kind of things, so you can use this very flexable.
+
+        You can register a bunch of listeners.
+        Then you have to call `do_startup` once and `process_update` with every update and you're good to go.
+
 
         :param api_key: The key for the telegram bot api.
         :type  api_key: str
@@ -137,13 +146,7 @@ class Teleserver(object):
         self._bot: Union[Bot, None] = None  # will be set in self.init_bot()
         self._me: Union[User, None] = None  # will be set in self.init_bot()
         self._return_python_objects: bool = return_python_objects
-
-        super().__init__(
-            api_key=api_key, app=app, blueprint=blueprint, hostname=hostname, hookpath=hookpath,
-            debug_routes=debug_routes, disable_setting_webhook_telegram=disable_setting_webhook_telegram,
-            disable_setting_webhook_route=disable_setting_webhook_route, return_python_objects=return_python_objects,
-        )
-        # end def
+    # end def
 
     def register_handler(self, event_handler: Filter):
         """
@@ -481,3 +484,116 @@ class Teleserver(object):
     on_command = CommandFilter.decorator
 
     command = on_command
+# end def
+
+
+class Teleserver(Teleprocessor):
+    def __init__(
+        self,
+        api_key,
+        hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
+        return_python_objects=True
+    ):
+        """
+        This is the very core of the server.
+
+         Handles registration and update processing.
+        Does not handle any webserver kind of things, so you can use this very flexable.
+
+        You can register a bunch of listeners.
+        Then you have to call `do_startup` once and `process_update` with every update and you're good to go.
+
+
+        :param api_key: The key for the telegram bot api.
+        :type  api_key: str
+
+        :param hostname: The hostname or IP (and maybe a port) where this server is reachable in the internet.
+                         Specify the path with :param hostpath:
+                         Used to calculate the webhook url.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hostpath: The host url the base of where this bot is reachable.
+                         Examples: None (for root of server) or "/bot2"
+                         Note: The webhook will only be set on initialisation.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hookpath: The endpoint of the telegram webhook.
+                        Defaults to "/income/<API_KEY>"
+                        Note: The webhook will only be set on initialisation.
+                        Also configurable via environment variables. See calculate_webhook_url()
+
+        :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
+        """
+        super().__init__(
+            api_key=api_key,
+            return_python_objects=return_python_objects,
+        )
+        self.hostname = hostname  # e.g. "example.com:443"
+        self.hostpath = hostpath  # e.g. /foo
+        self.hookpath = hookpath  # e.g. /income/{API_KEY}
+    # end def
+# end def
+
+
+class Gnerf(Teleserver):
+    def __init__(
+        self,
+        api_key,
+        app=None, blueprint=None, hostname=None, hostpath=None, hookpath="/income/{API_KEY}",
+        debug_routes=False, disable_setting_webhook_telegram=None, disable_setting_webhook_route=None,
+        return_python_objects=True
+    ):
+        """
+        This is the very core of the server.
+
+         Handles registration and update processing.
+        Does not handle any webserver kind of things, so you can use this very flexable.
+
+        You can register a bunch of listeners.
+        Then you have to call `do_startup` once and `process_update` with every update and you're good to go.
+
+
+        :param api_key: The key for the telegram bot api.
+        :type  api_key: str
+
+        :param app: The flask app if you don't like to call :meth:`init_app` yourself.
+        :type  app: flask.Flask | None
+
+        :param blueprint: A blueprint, where the telegram webhook (and the debug endpoints, see `debug_routes`) will be registered in.
+                          Use if you don't like to call :meth:`init_app` yourself.
+                          If not set, but `app` is, it will register any routes to the `app` itself.
+                          Note: This is NOT a `TBlueprint` but a regular `flask` one!
+        :type  blueprint: flask.Blueprint | None
+
+        :param hostname: The hostname or IP (and maybe a port) where this server is reachable in the internet.
+                         Specify the path with :param hostpath:
+                         Used to calculate the webhook url.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hostpath: The host url the base of where this bot is reachable.
+                         Examples: None (for root of server) or "/bot2"
+                         Note: The webhook will only be set on initialisation.
+                         Also configurable via environment variables. See calculate_webhook_url()
+        :param hookpath: The endpoint of the telegram webhook.
+                        Defaults to "/income/<API_KEY>"
+                        Note: The webhook will only be set on initialisation.
+                        Also configurable via environment variables. See calculate_webhook_url()
+        :param debug_routes: Add extra url endpoints usefull for debugging. See setup_routes(...)
+
+        :param disable_setting_webhook_telegram: Disable updating the telegram webhook when starting.
+                                                 Useful for unit tests. Defaults to the app's config
+                                                 DISABLE_SETTING_ROUTE_WEBHOOK or False.
+        :type  disable_setting_webhook_telegram: None|bool
+
+        :param disable_setting_webhook_route: Disable creation of the webhook route.
+                                              Usefull if you don't need to listen for incomming events.
+        :type  disable_setting_webhook_route: None|bool
+
+        :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
+        """
+        super().__init__(
+            api_key=api_key,
+            app=app, blueprint=blueprint, hostname=hostname, hookpath=hookpath,
+            debug_routes=debug_routes, disable_setting_webhook_telegram=disable_setting_webhook_telegram,
+            disable_setting_webhook_route=disable_setting_webhook_route,
+            return_python_objects=return_python_objects,
+        )
+    pass
+# end def
