@@ -5,16 +5,17 @@ from typing import Union, List, Callable, Dict
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
 
-__author__ = 'luckydonald'
-
 from pytgbot import Bot
 from pytgbot.api_types.receivable.peer import User
 from pytgbot.api_types.receivable.updates import Update
 
-from exceptions import AbortProcessingPlease
-from server.extras import logger
-from server.filters import Filter, NoMatch, UpdateFilter, MessageFilter, CommandFilter
-from teleflask import TBlueprint
+from .blueprints import TBlueprint
+from .filters import Filter, NoMatch, UpdateFilter, MessageFilter, CommandFilter
+
+from ..exceptions import AbortProcessingPlease
+
+__author__ = 'luckydonald'
+
 
 logger = logging.getLogger(__name__)
 if __name__ == '__main__':
@@ -128,7 +129,7 @@ class Teleserver(object):
         self._blueprint_order: List[TBlueprint] = []
 
         self.__api_key: str = api_key
-        self._bot = Union[Bot, None] = None  # will be set in self.init_bot()
+        self._bot: Union[Bot, None] = None  # will be set in self.init_bot()
         self._me: Union[User, None] = None  # will be set in self.init_bot()
         self._return_python_objects: bool = return_python_objects
 
