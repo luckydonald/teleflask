@@ -5,6 +5,7 @@ from flask import request
 from pprint import pformat
 
 from luckydonaldUtils.logger import logging
+
 from pytgbot import Bot
 from pytgbot.api_types import TgBotApiObject
 from pytgbot.api_types.receivable.peer import User
@@ -334,8 +335,6 @@ class Teleflask(Teleserver):
             logger.warning(error_msg)
             return {"status": "error", "message": error_msg, "error_code": 403}, 403
         # end if
-        from flask import request
-        from pytgbot.exceptions import TgApiServerException
         logger.debug("COMMAND: {cmd}, ARGS: {args}".format(cmd=command, args=request.args))
         try:
             res = self.bot.do(command, **request.args)
@@ -370,9 +369,6 @@ class Teleflask(Teleserver):
 
         :return:
         """
-        from pprint import pformat
-        from flask import request
-
         logger.debug("INCOME:\n{}\n\nHEADER:\n{}".format(
             pformat(request.get_json()),
             request.headers if hasattr(request, "headers") else None
