@@ -245,7 +245,7 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
     # end def
 
     @property
-    def server(self) -> Union['teleflask.Teleserver', 'teleflask.Teleflask']:
+    def server(self) -> Union['', 'teleflask.Teleflask']:
         if not self._got_registered_once:
             raise AssertionError('Not registered to an Teleflask instance yet.')
         # end if

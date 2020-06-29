@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from .extras import Teleflask, Teleserver
+from .core import Teleserver
+from .extras import Teleflask
 
 __author__ = 'luckydonald'
 
