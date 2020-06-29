@@ -22,7 +22,7 @@ __all__ = ["Teleflask"]
 logger = logging.getLogger(__name__)
 
 
-class BotServer(object):
+class TeleServe(object):
     """
     This is the core logic.
     You can register a bunch of listeners. Then you have to call `do_startup` and `process_update` and
@@ -482,7 +482,7 @@ class BotServer(object):
 _self_jsonify = _class_self_decorate("jsonify")  # calls self.jsonify(...) with the result of the decorated function.
 
 
-class Teleflask(BotServer):
+class Teleflask(TeleServe):
     VERSION = VERSION
     __version__ = VERSION
 

@@ -8,7 +8,7 @@ from .abstact import AbstractBotCommands, AbstractMessages, AbstractRegisterBlue
 
 __author__ = 'luckydonald'
 
-from .extras import BotServer, Teleflask
+from .extras import TeleServe, Teleflask
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +97,8 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
         def wrapper(state):
             if state.first_registration:
                 func(state)
+            # end if
+        # end def
         return self.record(update_wrapper(wrapper, func))
     # end def
 
@@ -245,7 +247,7 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
     # end def
 
     @property
-    def server(self) -> Union[BotServer, Teleflask]:
+    def server(self) -> Union[TeleServe, Teleflask]:
         if not self._got_registered_once:
             raise AssertionError('Not registered to an Teleflask instance yet.')
         # end if
