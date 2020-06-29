@@ -20,7 +20,7 @@ __all__ = [
 from .server.core import Teleprocessor, Teleserver
 
 if _sys.version_info.major >= 3 and _sys.version_info.minor >= 6:
-    IMPORTS = {'Teleflask': '.server.extras.flask',}
+    IMPORTS = {'Teleflask': '.server.extras.flask', 'SyncTelepoll': '.server.extras.polling.sync'}
     try:
         # we try to serve them as lazy imports
         import importlib as _importlib
