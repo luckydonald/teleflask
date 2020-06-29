@@ -12,7 +12,7 @@ from pytgbot.api_types.receivable.updates import Update
 from pytgbot.exceptions import TgApiServerException
 
 from exceptions import AbortProcessingPlease
-from teleflask import TBlueprint
+from .blueprints import TBlueprint
 from .filters import MessageFilter, UpdateFilter, CommandFilter, NoMatch, Filter
 from .. import VERSION
 from .utilities import _class_self_decorate
