@@ -4,6 +4,6 @@ __author__ = 'luckydonald'
 VERSION = "2.0.0.dev21"
 __version__ = VERSION
 
-from .server import Teleflask
+from .server import Teleserver, Teleflask
 from .server.blueprints import TBlueprint
 from .server.utilities import abort_processing
