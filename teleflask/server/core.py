@@ -529,6 +529,7 @@ class Teleserver(Teleprocessor):
         self.hostname = hostname  # e.g. "example.com:443"
         self.hostpath = hostpath  # e.g. /foo
         self.hookpath = hookpath  # e.g. /income/{API_KEY}
+        self.webhook_url = calculate_webhook_url(api_key=api_key, hostname=hostname, hostpath=hostpath, hookpath=hookpath)  # will be filled out by self.calculate_webhook_url() in self.init_app(...)
     # end def
 # end def
 
