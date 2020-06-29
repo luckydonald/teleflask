@@ -493,6 +493,22 @@ class Teleflask(Teleserver):
     def _webhook_url(self):
         return self.__webhook_url
     # end def
+
+    def calculate_webhook_url(self, hostname, hostpath, hookpath):
+        if not hostname:
+            hostname = os.getenv('URL_HOSTNAME', None)
+        # end if
+        if not hostname:
+            info = requests.get('http://ipinfo.io').json()
+            hostname = str(info["ip"])
+            logger.warning("URL_HOSTNAME env not set, falling back to ip address: {ip!r}".format(ip=hostname))
+        # end if
+        if hostname is None:  # no hostname
+            info = requests.get('http://ipinfo.io').json()
+            hostname = str(info["ip"])
+            logger.warning("URL_HOSTNAME env not set, falling back to ip address: {ip!r}".format(ip=hostname))
+        # end if
+    # end def
 # end class
 
 
