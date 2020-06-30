@@ -76,7 +76,10 @@ class Telepoll(Teleprocessor):
         :return:
         """
 
-    def run_forever(self):
+    def run_forever(self, remove_webhook: bool = True):
+        if remove_webhook:
+            self.bot.set_webhook('')
+        # end if
         while not self.please_do_stop:
             updates = self.bot.get_updates(
                 offset=self._offset,
@@ -85,6 +88,7 @@ class Telepoll(Teleprocessor):
             )
             for update in updates:
                 logger.debug(f'processing update: {update!r}')
+                self._offset = update.update_id
                 try:
                     result = self.process_update(update)
                 except:
@@ -97,7 +101,7 @@ class Telepoll(Teleprocessor):
                     logger.exception('processing result failed')
                     continue
                 # end try
-                logger.debug(f'sent {len(messages)} messages')
+                logger.debug(f'sent {"no" if messages is None else len(messages)} messages')
             # end for
         # end while
 # end class

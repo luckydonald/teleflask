@@ -83,6 +83,8 @@ class Teleprocessor(object):
     startup_listeners: List[Callable]
     startup_already_run: bool
 
+    update_listeners: List[Filter]
+
     blueprints: Dict[str, TBlueprint]
     _blueprint_order: List[TBlueprint]
 
@@ -142,6 +144,8 @@ class Teleprocessor(object):
 
         self.startup_listeners: List[Callable] = list()
         self.startup_already_run: bool = False
+
+        self.update_listeners: List[Filter] = list()
 
         self.blueprints: Dict[str, TBlueprint] = {}
         self._blueprint_order: List[TBlueprint] = []
@@ -241,7 +245,6 @@ class Teleprocessor(object):
                 logger.exception(f"Error executing the update listener with {filter!s}: {filter!r}")
             # end try
         # end for
-        super().process_update(update)
     # end def
 
     def on_startup(self, func):
@@ -483,9 +486,17 @@ class Teleprocessor(object):
         return self.__api_key
     # end def
 
-    on_update = UpdateFilter.decorator
-    on_message = MessageFilter.decorator
-    on_command = CommandFilter.decorator
+    def on_update(self, *required_keywords: str):
+        return UpdateFilter.decorator(self, *required_keywords)
+    # end def
+
+    def on_message(self, *required_keywords: str):
+        return MessageFilter.decorator(self, *required_keywords)
+    # end def
+
+    def on_command(self, command: str):
+        return CommandFilter.decorator(command, teleflask_or_tblueprint=self)
+    # end def
 
     command = on_command
 # end def
