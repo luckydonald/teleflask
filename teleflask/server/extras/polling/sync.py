@@ -11,13 +11,13 @@ from pytgbot.api_types.receivable.peer import User
 from pytgbot.api_types.receivable.updates import Update
 from pytgbot.exceptions import TgApiServerException
 
-from ... import Teleserver
+from ...core import Teleprocessor
 
 __author__ = 'luckydonald'
 __all__ = ["Telepoll"]
 logger = logging.getLogger(__name__)
 
-class Telepoll(Teleserver):
+class Telepoll(Teleprocessor):
     please_do_stop: bool
 
     def __init__(
@@ -36,7 +36,7 @@ class Telepoll(Teleserver):
 
         :param return_python_objects: Enable return_python_objects in pytgbot. See pytgbot.bot.Bot
         """
-        super().__init__(api_key, return_python_objects)
+        super().__init__(api_key, return_python_objects=return_python_objects)
         self.please_do_stop = False
         self.init_bot()
         self._offset = None
