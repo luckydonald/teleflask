@@ -210,7 +210,7 @@ class Teleprocessor(object):
         self.update_listeners = [listerner for listerner in self.update_listeners if listerner.func != func]
     # end def
 
-    def process_update(self, update):
+    def process_update(self, update: Update):
         """
         Iterates through self.update_listeners, and calls them with (update, app).
 
@@ -219,7 +219,7 @@ class Teleprocessor(object):
         :param update: incoming telegram update.
         :return: nothing.
         """
-        assert isinstance(update, Update)  # Todo: non python objects
+        assert_type_or_raise(update, Update, parameter_name='update')  # Todo: non python objects
         filter: Filter
         for filter in self.update_listeners:
             try:
