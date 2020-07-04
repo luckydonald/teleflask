@@ -499,7 +499,7 @@ class CommandFilter(MessageFilter):
     # end def
 
     # noinspection SqlNoDataSourceInspection
-    def __str__(self):
+    def __str__(self) -> str:
         if not self._username:
             return f"Command Filter matching the command {self._command} but no username suffixed commands."
         else:
@@ -507,8 +507,93 @@ class CommandFilter(MessageFilter):
         # end if
     # end def
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, command={self._command!r}, username={self._username!r})"
     # end def
 # end class
 
+
+class HelpfulCommandFilter(CommandFilter):
+    """
+    Same as CommandFilter, but has a few fields usefull for generating command descriptions and help texts automatically.
+    """
+    short_description: Union[str, None]
+    long_description: Union[str, None]
+
+    def __init__(self,
+        func: Union[Callable,  Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        command: str,
+         *,
+        short_description: Union[str, None],
+        long_description: Union[str, None],
+        username: Union[str, None]
+    ):
+        super().__init__(func, command, username)
+        self.short_description = short_description
+        self.long_description = long_description
+    # end if
+
+    @classmethod
+    def decorator(cls, command: str, *, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
+        """
+        Decorator to register a command.
+
+        Usage:
+            >>> @app.command("foo")
+            >>> def foo(update, text):
+            >>>     assert isinstance(update, Update)
+            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
+
+        If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+
+        :param command: the string of a command, without the slash.
+        """
+
+        def decorator_inner(function):
+            docs: Union[str, None] = function.__doc__
+            short_description: Union[str, None] = None
+            long_description: Union[str, None] = None
+            if docs:
+                docs = docs.strip()
+                docs: List[str] = docs.splitlines()
+                short_description = docs[0]
+                long_description = ""
+                for line in docs[1::]:
+                    line = line.strip()
+                    if line.startswith(":"):
+                        break
+                    # end if
+                    long_description += line + "\n"
+                # end if
+                long_description = long_description.strip()
+                if not long_description:
+                    long_description = short_description
+                # end if
+            # end if
+
+            if teleflask_or_tblueprint:
+                # we don't want to register later
+                filter = cls(
+                    func=function, command=command, username=teleflask_or_tblueprint.username,
+                    short_description=short_description, long_description=long_description,
+                )
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, command=command, username=None, short_description=None, long_description=None)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
+        # end def
+
+        return decorator_inner  # let that function be called again with the function.
+    # end def
+
+    def __str__(self):
+        return super().__str__().rstrip('.') + f": {self.short_description!s} (long description: {self.long_description!r})."
+    # end def
+
+    def __repr__(self):
+        return super().__repr__().rstrip('.') + f": {self.short_description!s} (long description: {self.long_description!r})."
+    # end def
+# end class
