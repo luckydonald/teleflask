@@ -158,7 +158,7 @@ class UpdateFilter(Filter):
     # end def
 
     @classmethod
-    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords):
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords: str):
         """
         Decorator to register a function to receive updates.
 
@@ -280,7 +280,7 @@ class MessageFilter(UpdateFilter):
     # end def
 
     @classmethod
-    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords):
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords: str):
         """
         Decorator to register a function to receive updates.
 
@@ -467,7 +467,7 @@ class CommandFilter(MessageFilter):
     # end def
 
     @classmethod
-    def decorator(cls, command, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
+    def decorator(cls, command: str, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
         """
         Decorator to register a command.
 
