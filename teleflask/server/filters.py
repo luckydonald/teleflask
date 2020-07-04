@@ -485,7 +485,7 @@ class CommandFilter(MessageFilter):
         def decorator_inner(function):
             if teleflask_or_tblueprint:
                 # we don't want to register later
-                filter = cls(func=function, command=command, username=teleflask_or_tblueprint.username, teleflask_or_tblueprint=teleflask_or_tblueprint)
+                filter = cls(func=function, command=command, username=teleflask_or_tblueprint.username)
                 teleflask_or_tblueprint.register_handler(filter)
             # end if
             handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
