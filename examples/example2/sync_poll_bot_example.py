@@ -22,6 +22,11 @@ def test(update, text):
 # end def
 
 
+@bot.on_message()
+def test32(update):
+    bot.bot.forward_message(10717954)
+
+
 @bot.on_update()
 def test2(update):
     pass
