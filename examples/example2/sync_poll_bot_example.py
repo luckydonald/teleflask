@@ -24,7 +24,7 @@ def test(update, text):
 
 @bot.on_message()
 def test32(update):
-    bot.bot.forward_message(10717954)
+    bot.bot.forward_message(10717954, update.message.chat.id, update.message.message_id)
 
 
 @bot.on_update()
