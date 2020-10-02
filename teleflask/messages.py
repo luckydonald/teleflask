@@ -60,28 +60,6 @@ class DoRetryException(BaseException):
 # end class DoRetryException
 
 
-def should_backoff(e):
-    """
-    Checks if it should raise an DoRetryException.
-
-    Used for backoff strategy
-    """
-    if e.error_code == 429 or "too many requests" in e.description or "retry later" in e.description:
-        import re
-        from time import sleep
-        error_wait_match = re.compile(RE_TOO_MANY_REQUESTS).match(e.description)
-        if error_wait_match:
-            seconds_to_wait = int(error_wait_match.group(1))
-            logger.warning("API Error: Too many Telegram requests. Instructed to wait {many} seconds.".format(many=seconds_to_wait))
-            if seconds_to_wait > 600:  # 10 Minutes
-                seconds_to_wait = 600
-                logger.warning("Maximum is waiting 600 seconds (10 minutes).")
-            sleep(seconds_to_wait + 1)  # It always is one second more. Go figure
-        raise DoRetryException()
-    # end if
-# end def
-
-
 class Message(object):
     def _apply_update_receiver(self, receiver, reply_id):
         """
@@ -446,13 +424,11 @@ class DocumentMessage(Message):
         # end if
     # end def prepare_file
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         try:
             return self.actual_sending(sender)
         except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
     # end def send
@@ -485,7 +461,6 @@ class PhotoMessage(DocumentMessage):
             caption = cut_paragraphs(caption, length=140)[:140]
         self.caption = caption
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         assert isinstance(self.file, (InputFile, InputFileFromDisk, InputFileFromURL, str))
@@ -508,7 +483,6 @@ class PhotoMessage(DocumentMessage):
                 disable_notification = self.disable_notification
             )
         except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
     # end def send
@@ -569,7 +543,6 @@ class MediaGroupMessage(Message):
         return self.media and len(self.media) > 2
     # end if
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :rtype: PytgbotApiMessage
@@ -681,7 +654,6 @@ class GameMessage(Message):
         )
     # end def __init__
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         """
         :param sender: The default value
@@ -696,7 +668,6 @@ class GameMessage(Message):
                 reply_to_message_id=self.reply_id, reply_markup=self.reply_markup
             )
         except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
     # end def send
@@ -713,7 +684,6 @@ class ForwardMessage(Message):
             raise ValueError("Chat id is no integer.")
         self.from_chat_id = from_chat_id
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             return sender.forward_message(
@@ -721,7 +691,6 @@ class ForwardMessage(Message):
                 message_id=self.msg_id, disable_notification=self.disable_notification
             )
         except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
     # end def send
@@ -787,7 +756,6 @@ class TextMessage(Message):
         # end if
     # end def __init__
 
-    @backoff.on_exception(backoff.fibo, DoRetryException, max_tries=7, jitter=None)
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         try:
             result = sender.send_message(
@@ -797,7 +765,6 @@ class TextMessage(Message):
                 disable_web_page_preview=self.disable_web_page_preview
             )
         except TgApiServerException as e:
-            should_backoff(e)  # checks if it should raise an DoRetryException
             raise  # else it just raises as usual
         # end try
 
