@@ -154,6 +154,7 @@ class Message(object):
 
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         raise NotImplementedError("Overwrite this function.")
+    # end def
 # end class
 
 
@@ -427,18 +428,23 @@ class DocumentMessage(Message):
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         self.prepare_file()
         try:
-            return self.actual_sending(sender)
+            return self.actual_sending(sender, ignore_reply=False)
         except TgApiServerException as e:
+            if e.error_code == 400 and e.description.lower().startswith('bad request') and 'reply message not found' in e.description:
+                logger.debug('Retry sending without `reply_to_message_id`.')
+                return self.actual_sending(sender, ignore_reply=True)
+            # end if
             raise  # else it just raises as usual
         # end try
     # end def send
 
-    def actual_sending(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
+    def actual_sending(self, sender: PytgbotApiBot, ignore_reply: bool = False) -> PytgbotApiMessage:
         assert isinstance(self.reply_id, int)  # not DEFAULT_MESSAGE_ID
         return sender.send_document(
             chat_id=self.receiver, document=self.file,
             caption=self.caption, parse_mode=self.parse_mode,
-            reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            reply_markup=self.reply_markup,
             disable_notification=self.disable_notification
         )
     # end def
@@ -483,6 +489,14 @@ class PhotoMessage(DocumentMessage):
                 disable_notification = self.disable_notification
             )
         except TgApiServerException as e:
+            if e.error_code == 400 and e.description.startswith('bad request') and 'reply message not found' in e.description:
+                logger.debug('Trying to resend without reply_to.')
+                return sender.send_photo(
+                    chat_id=self.receiver, photo=self.file,
+                    caption=self.caption, reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
+                    disable_notification=self.disable_notification
+                )
+            # end if
             raise  # else it just raises as usual
         # end try
     # end def send
@@ -505,10 +519,10 @@ class StickerMessage(DocumentMessage):
         )
     # end def __init__
 
-    def actual_sending(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
+    def actual_sending(self, sender: PytgbotApiBot, ignore_reply: bool = False) -> PytgbotApiMessage:
         return sender.send_sticker(
             chat_id=self.receiver, sticker=self.file_id,
-            reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
             disable_notification=self.disable_notification
         )
     # end def
@@ -625,9 +639,10 @@ class AudioMessage(DocumentMessage):
         )  # let DocumentMessage handle this
     # end def __init__
 
-    def actual_sending(self, sender: PytgbotApiBot, receiver, reply_id):
+    def actual_sending(self, sender: PytgbotApiBot, ignore_reply: bool = False):
         return sender.send_audio(
-            chat_id=receiver, audio=self.file_id, reply_to_message_id=reply_id,
+            chat_id=self.receiver, audio=self.file_id,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
             caption=self.caption, parse_mode=self.parse_mode,
             reply_markup=self.reply_markup, disable_notification=self.disable_notification
         )

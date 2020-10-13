@@ -14,6 +14,7 @@ from pytgbot.api_types.sendable.input_media import InputMediaPhoto, InputMediaVi
 from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup, ReplyKeyboardMarkup, ForceReply
 from pytgbot.api_types.sendable.reply_markup import ReplyKeyboardRemove
 from pytgbot.bot import Bot as PytgbotApiBot
+from pytgbot.exceptions import TgApiServerException
 
 from .messages import DEFAULT_MESSAGE_ID
 
@@ -85,6 +86,19 @@ class SendableMessageBase(TgBotApiObject):
 
     @abstractmethod
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
+        try:
+            return self.actual_send(sender)
+        except TgApiServerException as e:
+            if e.error_code == 400 and e.description.startswith('bad request') and 'reply message not found' in e.description:
+                logger.debug('Trying to resend without reply_to.')
+                return self.actual_send(sender, ignore_reply=True)
+            # end if
+            raise e
+        # end try
+    # end def
+
+    @abstractmethod
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         raise NotImplementedError("Overwrite this function.")
     # end def
 
@@ -240,18 +254,23 @@ class TextMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply=False) -> TgBotApiObject:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_message(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            text=self.text, chat_id=self.receiver, reply_to_message_id=self.reply_id, parse_mode=self.parse_mode, disable_web_page_preview=self.disable_web_page_preview, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            text=self.text, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            parse_mode=self.parse_mode, disable_web_page_preview=self.disable_web_page_preview, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -442,18 +461,23 @@ class PhotoMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_photo(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            photo=self.photo, chat_id=self.receiver, reply_to_message_id=self.reply_id, caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            photo=self.photo, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -697,10 +721,12 @@ class AudioMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
+        :param sender:
+        :param ignore_reply:
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
@@ -708,7 +734,9 @@ class AudioMessage(SendableMessageBase):
         """
         return sender.send_audio(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            audio=self.audio, chat_id=self.receiver, reply_to_message_id=self.reply_id, caption=self.caption, parse_mode=self.parse_mode, duration=self.duration, performer=self.performer, title=self.title, thumb=self.thumb, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            audio=self.audio, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            caption=self.caption, parse_mode=self.parse_mode, duration=self.duration, performer=self.performer, title=self.title, thumb=self.thumb, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -952,18 +980,23 @@ class DocumentMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_document(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            document=self.document, chat_id=self.receiver, reply_to_message_id=self.reply_id, thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            document=self.document, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -1233,18 +1266,23 @@ class VideoMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_video(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            video=self.video, chat_id=self.receiver, reply_to_message_id=self.reply_id, duration=self.duration, width=self.width, height=self.height, thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, supports_streaming=self.supports_streaming, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            video=self.video, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            duration=self.duration, width=self.width, height=self.height, thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, supports_streaming=self.supports_streaming, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -1516,18 +1554,23 @@ class AnimationMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_animation(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            animation=self.animation, chat_id=self.receiver, reply_to_message_id=self.reply_id, duration=self.duration, width=self.width, height=self.height, thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            animation=self.animation, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            duration=self.duration, width=self.width, height=self.height, thumb=self.thumb, caption=self.caption, parse_mode=self.parse_mode, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -1769,18 +1812,23 @@ class VoiceMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_voice(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            voice=self.voice, chat_id=self.receiver, reply_to_message_id=self.reply_id, caption=self.caption, parse_mode=self.parse_mode, duration=self.duration, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            voice=self.voice, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            caption=self.caption, parse_mode=self.parse_mode, duration=self.duration, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -1998,18 +2046,23 @@ class VideoNoteMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_video_note(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            video_note=self.video_note, chat_id=self.receiver, reply_to_message_id=self.reply_id, duration=self.duration, length=self.length, thumb=self.thumb, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            video_note=self.video_note, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            duration=self.duration, length=self.length, thumb=self.thumb, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -2198,18 +2251,23 @@ class MediaGroupMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_media_group(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            media=self.media, chat_id=self.receiver, reply_to_message_id=self.reply_id, disable_notification=self.disable_notification
+            media=self.media, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            disable_notification=self.disable_notification
         )
     # end def send
 
@@ -2387,18 +2445,23 @@ class LocationMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_location(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            latitude=self.latitude, longitude=self.longitude, chat_id=self.receiver, reply_to_message_id=self.reply_id, live_period=self.live_period, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            latitude=self.latitude, longitude=self.longitude, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            live_period=self.live_period, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -2613,18 +2676,23 @@ class VenueMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_venue(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            latitude=self.latitude, longitude=self.longitude, title=self.title, address=self.address, chat_id=self.receiver, reply_to_message_id=self.reply_id, foursquare_id=self.foursquare_id, foursquare_type=self.foursquare_type, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            latitude=self.latitude, longitude=self.longitude, title=self.title, address=self.address, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            foursquare_id=self.foursquare_id, foursquare_type=self.foursquare_type, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -2832,18 +2900,23 @@ class ContactMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_contact(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            phone_number=self.phone_number, first_name=self.first_name, chat_id=self.receiver, reply_to_message_id=self.reply_id, last_name=self.last_name, vcard=self.vcard, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            phone_number=self.phone_number, first_name=self.first_name, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            last_name=self.last_name, vcard=self.vcard, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -3001,12 +3074,15 @@ class ChatActionMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def send(self, sender: PytgbotApiBot) -> bool:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
+
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
 
         :rtype: PytgbotApiMessage
         """
@@ -3151,18 +3227,23 @@ class StickerMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_sticker(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            sticker=self.sticker, chat_id=self.receiver, reply_to_message_id=self.reply_id, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            sticker=self.sticker, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -3499,18 +3580,23 @@ class InvoiceMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_invoice(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            title=self.title, description=self.description, payload=self.payload, provider_token=self.provider_token, start_parameter=self.start_parameter, currency=self.currency, prices=self.prices, chat_id=self.receiver, reply_to_message_id=self.reply_id, provider_data=self.provider_data, photo_url=self.photo_url, photo_size=self.photo_size, photo_width=self.photo_width, photo_height=self.photo_height, need_name=self.need_name, need_phone_number=self.need_phone_number, need_email=self.need_email, need_shipping_address=self.need_shipping_address, send_phone_number_to_provider=self.send_phone_number_to_provider, send_email_to_provider=self.send_email_to_provider, is_flexible=self.is_flexible, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            title=self.title, description=self.description, payload=self.payload, provider_token=self.provider_token, start_parameter=self.start_parameter, currency=self.currency, prices=self.prices, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            provider_data=self.provider_data, photo_url=self.photo_url, photo_size=self.photo_size, photo_width=self.photo_width, photo_height=self.photo_height, need_name=self.need_name, need_phone_number=self.need_phone_number, need_email=self.need_email, need_shipping_address=self.need_shipping_address, send_phone_number_to_provider=self.send_phone_number_to_provider, send_email_to_provider=self.send_email_to_provider, is_flexible=self.is_flexible, disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
@@ -3705,18 +3791,23 @@ class GameMessage(SendableMessageBase):
         self._next_msg = None
     # end def __init__
 
-    def send(self, sender: PytgbotApiBot):
+    def actual_send(self, sender: PytgbotApiBot, *, ignore_reply: bool = False) -> PytgbotApiMessage:
         """
         Send the message via pytgbot.
 
         :param sender: The bot instance to send with.
         :type  sender: pytgbot.bot.Bot
 
+        :param ignore_reply: If we should not do the `reply_to`, because that already failed.
+        :type  ignore_reply: bool
+
         :rtype: PytgbotApiMessage
         """
         return sender.send_game(
             # receiver, self.media, disable_notification=self.disable_notification, reply_to_message_id=reply_id
-            game_short_name=self.game_short_name, chat_id=self.receiver, reply_to_message_id=self.reply_id, disable_notification=self.disable_notification, reply_markup=self.reply_markup
+            game_short_name=self.game_short_name, chat_id=self.receiver,
+            reply_to_message_id=self.reply_id if not ignore_reply else None,
+            disable_notification=self.disable_notification, reply_markup=self.reply_markup
         )
     # end def send
 
