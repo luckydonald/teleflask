@@ -7,20 +7,31 @@ here = path.abspath(path.dirname(__file__))
 
 long_description = """A Python module that connects to the Telegram bot api, allowing to interact with Telegram users or groups."""
 
+
+SYNC_REQUIREMENTS = [
+    'pytgbot[sync]',
+    'requests', "requests[security]",  # connect with the internet in general
+]
+ASYNC_REQUIREMENTS = [
+    'pytgbot[async]',
+    'httpx',  # connect with the internet in general
+]
+
+
 setup(
-    name='teleflask', version="2.0.0.dev21",
-    description='Easily create Telegram bots with pytgbot and flask. Webhooks made easy.',
+    name='teleflask', version="3.0.0.dev1",
+    description='Easily create Telegram bots with decorators functions, running a webserver of your choice. Webhooks made easy, but you don\'t even have to use \'em.',
     long_description=long_description,
     # The project's main homepage.
     url='https://github.com/luckydonald/teleflask',
     # Author details
     author='luckydonald',
-    author_email='code@luckydonald.de',
+    author_email='teleflask+code@luckydonald.de',
     # Choose your license
     license='GPLv3+',
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha', # 2 - Pre-Alpha, 3 - Alpha, 4 - Beta, 5 - Production/Stable
+        'Development Status :: 4 - Beta', # 2 - Pre-Alpha, 3 - Alpha, 4 - Beta, 5 - Production/Stable
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
         'Topic :: Communications',
@@ -36,16 +47,18 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
         # 'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
+        # 'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         # 'Programming Language :: Python :: 3.2',
         # 'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.7',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Unix',
     ],
     # What does your project relate to?
-    keywords='pytgbot flask webhook telegram bot api python message send receive python secure fast answer reply image voice picture location contacts typing multi messanger inline quick reply gif image video mp4 mpeg4',
+    keywords='pytgbot flask webhook telegram bot api python message send receive python secure fast answer reply image voice picture location contacts typing multi messanger inline quick reply gif image video mp4 mpeg4 webserver decorators',
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     packages=['teleflask', 'teleflask.server'],
@@ -55,20 +68,27 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "flask",  # have flask
-        "pytgbot>=4.0",  # connect to telegram
+        'pprint',
         "DictObject", "luckydonald-utils>=0.70",  # general utils
         "python-magic", "backoff>=1.4.1",  # messages messages
         # backoff >=1.4.1 because of a bug with the flask development server
         # see https://github.com/litl/backoff/issues/30
-        "requests", "requests[security]",  # connect with the internet in general
+        'pytgbot>=4.0" # connect to telegram'
     ],
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:
     # $ pip install -e .[dev,test]
     extras_require = {
-      'dev': ['bump2version'],
-    # 'test': ['coverage'],
+        'dev': ['bump2version'],
+        'sync': SYNC_REQUIREMENTS,
+        'async': ASYNC_REQUIREMENTS,
+        'flask': [
+            'flask',
+        ] + SYNC_REQUIREMENTS,
+        'quart': [
+            'quart',
+        ] + ASYNC_REQUIREMENTS,
+        # 'test': ['coverage'],
     },
     # If there are data files included in your packages that need to be
     # installed, specify them here. If using Python 2.6 or less, then these

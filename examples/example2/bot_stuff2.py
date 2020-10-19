@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask
 
-from teleflask.server.extras import PollingTeleflask
+from teleflask.server.extras.flask import PollingTeleflask
 
 from somewhere import API_KEY
 

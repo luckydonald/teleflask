@@ -8,6 +8,7 @@ from luckydonaldUtils.logger import logging
 __author__ = 'luckydonald'
 
 from pytgbot.api_types.receivable.updates import Update, Message
+
 from ..messages import Message as OldSendableMessage
 from ..new_messages import SendableMessageBase
 
@@ -19,6 +20,9 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     logging.add_colored_handler(level=logging.DEBUG)
 # end if
+
+
+_HANDLERS_ATTRIBUTE = '__teleflask.__handlers'
 
 
 class NoMatch(Exception):
@@ -36,7 +40,11 @@ class Filter(object):
     type: str
     func: Union[Callable, DEFAULT_CALLABLE]
 
-    def __init__(self, type: str, func: Union[Callable, DEFAULT_CALLABLE]):
+    def __init__(
+        self,
+        type: str,
+        func: Union[Callable, DEFAULT_CALLABLE],
+    ):
         """
         :param type: The type of this class.
         :param func: The function registered.
@@ -56,6 +64,14 @@ class Filter(object):
         Calls the callback
         """
         return self.func(update)
+    # end def
+
+    def __str__(self):
+        return "Parent Filter class allowing everything, but actually you should subclass this."
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r})"
     # end def
 # end class
 
@@ -85,7 +101,10 @@ class UpdateFilter(Filter):
 
     required_update_keywords: Union[List[str], None]
 
-    def __init__(self, func: Callable, required_update_keywords: Union[List[str], None] = None):
+    def __init__(
+        self,
+        func: Callable, required_update_keywords: Union[List[str], None] = None,
+    ):
         super().__init__(self.TYPE, func=func)
         self.required_update_keywords = self._prepare_required_keywords(required_update_keywords)
     # end def
@@ -105,21 +124,30 @@ class UpdateFilter(Filter):
         return required_keywords
     # end def
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        if required_keywords == DEFAULT:
-            required_keywords = self.required_update_keywords
-        # end if
+    @staticmethod
+    def _has_required_keywords(obj: Any, required_keywords: Union[Tuple[str, ...], List[str]]) -> bool:
+        """
+        Check that ALL the given `required_keywords` are existent in the `obj`ect, and are not `None`.
 
+        :param required_keywords: List of required non-None element attributes.
+        :return: Boolean if that's the case.
+        """
         if required_keywords is None:
             # no filter -> allow all the differnt type of updates
-            return
+            return True
         # end if
 
-        if all(getattr(update, required_keyword, None) != None for required_keyword in required_keywords):
+        if all(getattr(obj, required_keyword, None) is not None for required_keyword in required_keywords):
             # we have one of the required fields
-            return
+            return True
         # end if
-        raise NoMatch('update not matching the required keywords')
+        return False
+    # end def
+
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        if not self._has_required_keywords(update, self.required_update_keywords):
+            raise NoMatch('update not matching the required keywords')
+        # end if
     # end def
 
     def call_handler(self, update: Update, match_result: MATCH_RESULT_TYPE) -> OPTIONAL_SENDABLE_MESSAGE_TYPES:
@@ -127,6 +155,69 @@ class UpdateFilter(Filter):
         Calls the callback
         """
         return self.func(update)
+    # end def
+
+    @classmethod
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords: str):
+        """
+        Decorator to register a function to receive updates.
+
+        Usage:
+            >>> from teleflask import Teleflask, TBlueprint
+            >>> app = Teleflask(API_KEY)
+
+            >>> @app.on_update
+            >>> @app.on_update("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     assert isinstance(update, Update)
+            ...     # do stuff with the update
+            ...     # you can use app.bot to access the bot's messages functions
+        Or, if you wanna go do it directly for some strange reason:
+            >>> @UpdateFilter.decorator(app)
+            >>> @UpdateFilter.decorator(app)("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     pass
+        """
+
+        def decorator_inner(function):
+            if teleflask_or_tblueprint:
+                filter = cls(func=function, required_update_keywords=required_keywords)
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, required_update_keywords=required_keywords)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
+        # end def
+
+        if (
+            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str)  # not string -> must be function
+        ):
+            # @on_update
+            function = required_keywords[0]
+            required_keywords = None
+            return decorator_inner(function)  # not string -> must be function
+        # end if
+        # -> else: all `*required_keywords` are the strings
+        # @on_update("update_id", "message", "whatever")
+        return decorator_inner  # let that function be called again with the function.
+    # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self):
+        if not self.required_update_keywords:
+            return "Update Filter matching every update."
+        elif len(self.required_update_keywords) == 1:
+            return f"Update Filter matching only updates with the attribute {self.required_update_keywords[0]!r} set and not None"
+        else:
+            return f"Update Filter matching only updates with all the attributes {self.required_update_keywords!r} set and not None"
+        # end if
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, required_update_keywords={self.required_update_keywords!r})"
     # end def
 # end def
 
@@ -160,31 +251,24 @@ class MessageFilter(UpdateFilter):
 
     :params required_update_keywords: Optionally: Specify attribute the message needs to have.
     """
+    TYPE = 'update'
     MATCH_RESULT_TYPE = None
     func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], required_update_keywords: Union[List[str], None] = None):
+    def __init__(
+        self,
+        func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        required_message_keywords: Union[List[str], None] = None,
+    ):
         super().__init__(func=func, required_update_keywords=['message'])
-        self.required_message_keywords = self._prepare_required_keywords(required_update_keywords)
+        self.required_message_keywords = self._prepare_required_keywords(required_message_keywords)
     # end def
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        super().match(update=update, required_keywords=['message'])
-
-        if required_keywords == DEFAULT:
-            required_keywords = self.required_message_keywords
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        super().match(update=update)
+        if not self._has_required_keywords(update.message, self.required_message_keywords):
+            raise NoMatch('message not matching the required keywords')
         # end if
-
-        if required_keywords is None:
-            # no filter -> allow all the differnt type of updates
-            return
-        # end if
-
-        if all(getattr(update.message, required_keyword, None) != None for required_keyword in required_keywords):
-            # we have one of the required fields
-            return
-        # end if
-        raise NoMatch('message not matching the required keywords')
     # end def
 
     def call_handler(self, update: Update, match_result: MATCH_RESULT_TYPE) -> OPTIONAL_SENDABLE_MESSAGE_TYPES:
@@ -193,6 +277,70 @@ class MessageFilter(UpdateFilter):
         """
         message = update.message
         return self.func(update, message)
+    # end def
+
+    @classmethod
+    def decorator(cls, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None], *required_keywords: str):
+        """
+        Decorator to register a function to receive updates.
+
+        Usage:
+            >>> from teleflask import Teleflask, TBlueprint
+            >>> app = Teleflask(API_KEY)
+
+            >>> @app.on_update
+            >>> @app.on_update("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     assert isinstance(update, Update)
+            ...     # do stuff with the update
+            ...     # you can use app.bot to access the bot's messages functions
+        Or, if you wanna go do it directly for some strange reason:
+            >>> @UpdateFilter.decorator(app)
+            >>> @UpdateFilter.decorator(app)("update_id", "message", "whatever")
+            >>> def foo(update):
+            ...     pass
+        """
+
+        def decorator_inner(function):
+            if teleflask_or_tblueprint:
+                # we don't want to register later
+                filter = cls(func=function, required_message_keywords=required_keywords)
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, required_message_keywords=required_keywords)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
+        # end def
+
+        if (
+            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
+            not isinstance(required_keywords[0], str)  # not string -> must be function
+        ):
+            # @on_update
+            function = required_keywords[0]
+            required_keywords = None
+            return decorator_inner(function)  # not string -> must be function
+        # end if
+        # -> else: all `*required_keywords` are the strings
+        # @on_update("update_id", "message", "whatever")
+        return decorator_inner  # let that function be called again with the function.
+    # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self):
+        if not self.required_message_keywords:
+            return "Message Filter matching every message."
+        elif len(self.required_message_keywords) == 1:
+            return f"Message Filter matching only messages with the attribute {self.required_message_keywords[0]!r} set and not None"
+        else:
+            return f"Message Filter matching only messages with all the attributes {self.required_message_keywords!r} set and not None"
+        # end if
+    # end def
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, required_message_keywords={self.required_message_keywords!r})"
     # end def
 # end class
 
@@ -206,6 +354,7 @@ class CommandFilter(MessageFilter):
         >>> def foobar(update, text):
         >>>     ...  # like above
     """
+    TYPE = "command"
     TEXT_PARAM_TYPE = Union[None, str]
     MATCH_RESULT_TYPE = TEXT_PARAM_TYPE
 
@@ -220,8 +369,13 @@ class CommandFilter(MessageFilter):
     command_strings: Tuple[str, ...]
     _command_strings: Union[Tuple[str, ...], None]
 
-    def __init__(self, func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]], command: str, username: str):
-        super().__init__(func=func, required_update_keywords=['message'])
+    def __init__(
+        self,
+        func: Union[Callable, Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        command: str,
+        username: Union[str, None],
+    ):
+        super().__init__(func=func, required_message_keywords=['text'])
         self._command = command
         self._username = username
         self._command_strings = tuple(self._yield_commands(command=command, username=username))
@@ -233,7 +387,11 @@ class CommandFilter(MessageFilter):
     # end def
 
     @command.setter
-    def command(self, value: str):
+    def command(self, value: str) -> None:
+        if self._command == value:
+            # no need to waste resources here.
+            return
+        # end if
         self._command = value
         self._command_strings = tuple(self._yield_commands(command=value, username=self._username))
     # end def
@@ -244,7 +402,11 @@ class CommandFilter(MessageFilter):
     # end def
 
     @username.setter
-    def username(self, value: str):
+    def username(self, value: str) -> None:
+        if self._username == value:
+            # no need to waste resources here.
+            return
+        # end if
         self._username = value
         self._command_strings = tuple(self._yield_commands(command=self._command, username=value))
     # end def
@@ -266,19 +428,22 @@ class CommandFilter(MessageFilter):
         :param command: The command to construct.
         :return:
         """
-        for syntax in (
-                "/{command}",  # without username
-                "/{command}@{username}",  # with username
-                "command:///{command}",  # iOS represents commands like this
-                "command:///{command}@{username}"  # iOS represents commands like this
-        ):
-            yield syntax.format(command=command, username=username)
-        # end for
+        yield from (
+            f"/{command}",  # without username
+            f"command:///{command}",  # iOS represents commands like this
+        )
+        if username:
+            yield from (
+                f"/{command}@{username}",  # with username
+                f"command:///{command}@{username}"  # iOS represents commands like this
+            )
+        # end if
     # end def _yield_commands
 
-    def match(self, update: Update, required_keywords: Union[Type[DEFAULT], None, List[str]] = DEFAULT) -> MATCH_RESULT_TYPE:
-        if not super().match(update=update, required_keywords=['text']):
-            return None
+    def match(self, update: Update) -> MATCH_RESULT_TYPE:
+        super().match(update=update)
+        if not self._has_required_keywords(update.message, self.required_message_keywords):
+            raise NoMatch('message not matching the required keywords')
         # end if
 
         txt = update.message.text.strip()
@@ -300,34 +465,135 @@ class CommandFilter(MessageFilter):
         """
         return self.func(update, text=match_result)
     # end def
+
+    @classmethod
+    def decorator(cls, command: str, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
+        """
+        Decorator to register a command.
+
+        Usage:
+            >>> @app.command("foo")
+            >>> def foo(update, text):
+            >>>     assert isinstance(update, Update)
+            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
+
+        If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+
+        :param command: the string of a command, without the slash.
+        """
+
+        def decorator_inner(function):
+            if teleflask_or_tblueprint:
+                # we don't want to register later
+                filter = cls(func=function, command=command, username=teleflask_or_tblueprint.username)
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, command=command, username=None)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
+        # end def
+
+        return decorator_inner  # let that function be called again with the function.
+    # end def
+
+    # noinspection SqlNoDataSourceInspection
+    def __str__(self) -> str:
+        if not self._username:
+            return f"Command Filter matching the command {self._command} but no username suffixed commands."
+        else:
+            return f"Command Filter matching the command {self._command} including the ones with @{self._username}."
+        # end if
+    # end def
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(type={self.type!r}, func={self.func!r}, command={self._command!r}, username={self._username!r})"
+    # end def
 # end class
 
 
-class FilterHolder(object):
-    def on_update(self, *required_keywords):
+class HelpfulCommandFilter(CommandFilter):
+    """
+    Same as CommandFilter, but has a few fields usefull for generating command descriptions and help texts automatically.
+    """
+    short_description: Union[str, None]
+    long_description: Union[str, None]
+
+    def __init__(self,
+        func: Union[Callable,  Callable[[Update, Message], OPTIONAL_SENDABLE_MESSAGE_TYPES]],
+        command: str,
+         *,
+        short_description: Union[str, None],
+        long_description: Union[str, None],
+        username: Union[str, None]
+    ):
+        super().__init__(func, command, username)
+        self.short_description = short_description
+        self.long_description = long_description
+    # end if
+
+    @classmethod
+    def decorator(cls, command: str, *, teleflask_or_tblueprint: Union['Teleflask', 'TBlueprint', None] = None):
         """
-        Decorator to register a function to receive updates.
+        Decorator to register a command.
 
         Usage:
-            >>> @app.on_update
-            >>> def foo(update):
+            >>> @app.command("foo")
+            >>> def foo(update, text):
             >>>     assert isinstance(update, Update)
-            >>>     # do stuff with the update
-            >>>     # you can use app.bot to access the bot's messages functions
+            >>>     app.bot.send_message(update.message.chat.id, "bar:" + text)
+
+        If you now write "/foo hey" to the bot, it will reply with "bar:hey"
+
+        :param command: the string of a command, without the slash.
         """
-        def on_update_inner(function):
-            return self.add_update_listener(function, required_keywords=required_keywords)
+
+        def decorator_inner(function):
+            docs: Union[str, None] = function.__doc__
+            short_description: Union[str, None] = None
+            long_description: Union[str, None] = None
+            if docs:
+                docs = docs.strip()
+                docs: List[str] = docs.splitlines()
+                short_description = docs[0]
+                long_description = ""
+                for line in docs[1::]:
+                    line = line.strip()
+                    if line.startswith(":"):
+                        break
+                    # end if
+                    long_description += line + "\n"
+                # end if
+                long_description = long_description.strip()
+                if not long_description:
+                    long_description = short_description
+                # end if
+            # end if
+
+            if teleflask_or_tblueprint:
+                # we don't want to register later
+                filter = cls(
+                    func=function, command=command, username=teleflask_or_tblueprint.username,
+                    short_description=short_description, long_description=long_description,
+                )
+                teleflask_or_tblueprint.register_handler(filter)
+            # end if
+            handlers = getattr(function, _HANDLERS_ATTRIBUTE, [])
+            filter = cls(func=function, command=command, username=None, short_description=None, long_description=None)
+            handlers.append(filter)
+            setattr(function, _HANDLERS_ATTRIBUTE, handlers)
+            return function
         # end def
-        if (
-            len(required_keywords) == 1 and  # given could be the function, or a single required_keyword.
-            not isinstance(required_keywords[0], str)  # not string -> must be function
-        ):
-            # @on_update
-            function = required_keywords[0]
-            required_keywords = None
-            return on_update_inner(function)  # not string -> must be function
-        # end if
-        # -> else: *required_update_keywords are the strings
-        # @on_update("update_id", "message", "whatever")
-        return on_update_inner  # let that function be called again with the function.
+
+        return decorator_inner  # let that function be called again with the function.
     # end def
+
+    def __str__(self):
+        return super().__str__().rstrip('.') + f": {self.short_description!s} (long description: {self.long_description!r})."
+    # end def
+
+    def __repr__(self):
+        return super().__repr__().rstrip('.') + f": {self.short_description!s} (long description: {self.long_description!r})."
+    # end def
+# end class

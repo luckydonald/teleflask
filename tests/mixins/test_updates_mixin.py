@@ -260,7 +260,7 @@ class SomeUpdatesMixinTestCase(unittest.TestCase):
 
         self.assertFalse(self.mixin.update_listeners, "empty listener list => still not added")
 
-        self.mixin.add_update_listener(add_update_listener__callback)
+        self.mixin.on_update(add_update_listener__callback)
 
         self.assertIn(add_update_listener__callback, self.mixin.update_listeners,
                       "function in list => adding worked")

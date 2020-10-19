@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from functools import update_wrapper  # should be installed by flask
+from typing import Union
 
 from luckydonaldUtils.logger import logging
 
 from .abstact import AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprints, AbstractStartup, AbstractUpdates
-from .base import TeleflaskBase
-# from .mixins import UpdatesMixin, MessagesMixin, BotCommandsMixin, StartupMixin
 
 __author__ = 'luckydonald'
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +95,8 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
         def wrapper(state):
             if state.first_registration:
                 func(state)
+            # end if
+        # end def
         return self.record(update_wrapper(wrapper, func))
     # end def
 
@@ -136,12 +138,12 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
         return self.add_startup_listener(func)
     # end def
 
-    def add_command(self, command, function, exclusive=False):
+    def add_command(self, command, function):
         """
         Like `BotCommandsMixin.add_command`, but for this `Blueprint`.
         """
         self.record(
-            lambda state: state.teleflask.add_command(command, function, exclusive)
+            lambda state: state.teleflask.add_command(command, function)
         )
     # end def
 
@@ -153,19 +155,19 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
             lambda state: state.teleflask.remove_command(command, function)
         )
 
-    def on_command(self, command, exclusive=False):
+    def on_command(self, command):
         """
         Like `BotCommandsMixin.on_command`, but for this `Blueprint`.
         """
-        return self.command(command, exclusive=exclusive)
+        return self.command(command)
     # end def
 
-    def command(self, command, exclusive=False):
+    def command(self, command):
         """
         Like `BotCommandsMixin.command`, but for this `Blueprint`.
         """
         def register_command(func):
-            self.add_command(command, func, exclusive=exclusive)
+            self.add_command(command, func)
             return func
         return register_command
     # end def
@@ -243,18 +245,30 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
     # end def
 
     @property
-    def teleflask(self):
+    def server(self) -> Union['Teleserver', 'Teleflask']:
         if not self._got_registered_once:
             raise AssertionError('Not registered to an Teleflask instance yet.')
         # end if
-        if not self._teleflask:
+        if not self._server:
             raise AssertionError('No Teleflask instance yet. Did you register it?')
         # end if
-        return self._teleflask
+        return self._server
+    # end def
+
+    @property
+    def teleflask(self):
+        logger.warning('Please use the TBlueprint.server instead of TBlueprint.teleflask. This function is only kept for compatibility.')
+        return self.server
+    # end def
 
     @property
     def bot(self):
         return self.teleflask.bot
+    # end def
+
+    @property
+    def me(self):
+        return self.teleflask.me
     # end def
 
     @property
@@ -269,8 +283,7 @@ class TBlueprint(AbstractBotCommands, AbstractMessages, AbstractRegisterBlueprin
 
     @staticmethod
     def msg_get_reply_params(update):
-        return TeleflaskBase.msg_get_reply_params(update)
-
+        return Teleflask.msg_get_reply_params(update)
     # end def
 
     def send_messages(self, messages, reply_chat, reply_msg):
