@@ -685,6 +685,9 @@ class TeleflaskBase(TeleflaskMixinBase):
         assert_type_or_raise(update, TGUpdate, parameter_name="update")
         assert isinstance(update, TGUpdate)
 
+        if update.message and update.message.migrate_to_chat_id:
+            return update.message.migrate_to_chat_id, update.message.message_id
+        # end if
         if update.message and update.message.chat.id and update.message.message_id:
             return update.message.chat.id, update.message.message_id
         # end if
