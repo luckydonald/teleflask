@@ -442,7 +442,7 @@ class DocumentMessage(Message):
     # end def send
 
     def actual_sending(self, sender: PytgbotApiBot, ignore_reply: bool = False) -> PytgbotApiMessage:
-        assert_type_or_raise(self.reply_id, int, None, parameter_name=)  # not DEFAULT_MESSAGE_ID
+        assert_type_or_raise(self.reply_id, int, None, parameter_name="self.reply_id")  # not DEFAULT_MESSAGE_ID
         return sender.send_document(
             chat_id=self.receiver, document=self.file,
             caption=self.caption, parse_mode=self.parse_mode,
