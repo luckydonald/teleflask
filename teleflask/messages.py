@@ -448,7 +448,8 @@ class DocumentMessage(Message):
             caption=self.caption, parse_mode=self.parse_mode,
             reply_to_message_id=self.reply_id if not ignore_reply else None,
             reply_markup=self.reply_markup,
-            disable_notification=self.disable_notification
+            disable_notification=self.disable_notification,
+            allow_sending_without_reply=True,
         )
     # end def
 # end class
@@ -780,7 +781,8 @@ class TextMessage(Message):
                 chat_id=self.receiver, text=self.text,
                 parse_mode=self.parse_mode, disable_notification=self.disable_notification,
                 reply_to_message_id=self.reply_id, reply_markup=self.reply_markup,
-                disable_web_page_preview=self.disable_web_page_preview
+                disable_web_page_preview=self.disable_web_page_preview,
+                allow_sending_without_reply=True,
             )
         except TgApiServerException as e:
             raise  # else it just raises as usual
