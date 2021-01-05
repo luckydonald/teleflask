@@ -82,6 +82,8 @@ class Message(object):
             self.reply_id = reply_id
         # end if
     # end def
+
+
     def toString(self):
         assert (self.is_empty() != self.is_not_empty())
         text = "Empty " if not self.is_not_empty() else ""
@@ -151,6 +153,7 @@ class Message(object):
         if self.reply_id is DEFAULT_MESSAGE_ID:
             self.reply_id = reply_id
         return []
+    # end def
 
     def send(self, sender: PytgbotApiBot) -> PytgbotApiMessage:
         raise NotImplementedError("Overwrite this function.")
@@ -439,7 +442,7 @@ class DocumentMessage(Message):
     # end def send
 
     def actual_sending(self, sender: PytgbotApiBot, ignore_reply: bool = False) -> PytgbotApiMessage:
-        assert isinstance(self.reply_id, int)  # not DEFAULT_MESSAGE_ID
+        assert_type_or_raise(self.reply_id, int, None, parameter_name=)  # not DEFAULT_MESSAGE_ID
         return sender.send_document(
             chat_id=self.receiver, document=self.file,
             caption=self.caption, parse_mode=self.parse_mode,
