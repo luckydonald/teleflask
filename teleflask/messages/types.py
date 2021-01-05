@@ -109,7 +109,7 @@ class TextMessage(MessageWithinChat, MessageMixinParseMode):
         parse_mode: str = self.DEFAULT,
     ):
         assert_type_or_raise(text, str, parameter_name='text')
-        this.text = text
+        self.text = text
 
         MessageWithinChat.__init__(
             self, chat_id=chat_id, reply_to_message_id=reply_to_message_id, disable_notification=disable_notification
